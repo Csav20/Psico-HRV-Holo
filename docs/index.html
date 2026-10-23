@@ -1,0 +1,1569 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Psico-HRV-Holo</title>
+<meta name="description" content="Variabilidad cardiaca y sistema nervioso autónomo en vivo para psicología deportiva: gemelo fisiológico 3D, Poincaré, radar cuerpo–mente e informe. Unidad de Ciencias Aplicadas al Deporte · IND Chile.">
+<meta name="author" content="Claudio Abarca Vargas">
+<meta name="theme-color" content="#0B1022">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Psico-HRV-Holo · HRV y sistema nervioso autónomo">
+<meta property="og:description" content="Variabilidad cardiaca y sistema nervioso autónomo en vivo para psicología deportiva: gemelo fisiológico 3D, Poincaré, radar cuerpo–mente e informe. Unidad de Ciencias Aplicadas al Deporte · IND Chile.">
+<meta property="og:url" content="https://csav20.github.io/Psico-HRV-Holo/">
+<meta property="og:image" content="https://csav20.github.io/Psico-HRV-Holo/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="es_CL">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%230B1022%27/%3E%3Cpath d=%27M16 26 5 15.5a5.5 5.5 0 0 1 11-6 5.5 5.5 0 0 1 11 6Z%27 fill=%27%23E01E37%27/%3E%3Cpath d=%27M6 16h6l2-4 3 8 2-4h7%27 fill=%27none%27 stroke=%27%2300C864%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- three.js r147 (MIT) + OrbitControls/EffectComposer/RenderPass/UnrealBloomPass de examples/js, para el gemelo 3D -->
+<script src="holo/three-r147-bundle.js"></script>
+<!-- Chart.js: misma versión que vo2lab.html, para el gráfico SNA [SNA-VO2LAB-2026-10-23] -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!--
+  Psico-HRV-Holo · HRV holográfico [HRV-HOLO-2026-10-23]
+  Página independiente de vo2lab.html (no la modifica). Toma de vo2lab:
+    · Conexión BLE a bandas de FC: servicio estándar 0x180D (FC + RR) y Garmin propietario (solo FC).
+    · Calidad RR [RR-ART-2026-10-22]: marca de artefactos (|RR − mediana 5 previos| > 20 %), RR sintéticos
+      excluidos, > 5 % de artefactos → no se publica HRV.
+    · Índices SNS/PNS con la misma fórmula de la pestaña HRV & SNA (se suman 100 %; ver
+      docs/HRV_SNA_EVIDENCIA_Y_MEJORAS_2026-10-22.md, punto 2, para su revisión pendiente).
+  Gráficos de la propuesta de diseño: Poincaré 3D holográfico, paisaje autonómico 3D, radar cuerpo–mente.
+  R-BLE-04: el handler BLE solo encola; todo el DOM y los lienzos se pintan en requestAnimationFrame.
+  Web Bluetooth exige contexto seguro: abrir con Live Server (127.0.0.1) o https, en Chrome/Edge.
+-->
+<style>
+:root{
+  --night:#0B1022;--raised:#131B36;--deep:#070B18;--line:#24304F;--ink:#EEF2FA;--muted:#95A1BE;--soft:#C9D2E6;
+  --signal:#DFE312;--on-signal:#0B1022;--ok:#4CC28A;--warn:#F5C451;
+  --pns:#00C864;--sns:#FF8C00;--mind:#B388FF;--hrv:#00C8FF;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --sans:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--night);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
+a{color:var(--pns)}
+button,input,select,textarea{font:inherit}
+.wrap{max-width:1360px;margin:0 auto;padding:20px clamp(16px,3vw,40px) 48px;display:flex;flex-direction:column;gap:18px}
+header.top{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.brand{font-family:var(--display);font-weight:800;font-size:clamp(22px,2.6vw,30px);letter-spacing:-.01em;margin:0}
+.brand .o2{color:#5AB4FF}
+.lbl{font-size:13px;line-height:18px;color:var(--muted);font-weight:500}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.h3{font-family:var(--display);font-weight:700;font-size:18px;line-height:24px;margin:0}
+.card{background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.card.holo{background:radial-gradient(120% 100% at 50% 0%,#0E1A3A 0%,var(--deep) 70%)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:13px;line-height:18px;background:var(--deep);color:var(--ink)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--muted)}
+.btn{min-height:44px;padding:0 16px;border-radius:6px;border:1px solid var(--line);background:var(--deep);color:var(--ink);font-weight:600;font-size:14px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--signal);color:var(--on-signal);border-color:var(--signal)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.tab:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+nav.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.tab{min-height:44px;padding:0 16px;background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);font-weight:600;font-size:15px;cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--signal)}
+section[hidden]{display:none!important}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.kpi .v{font-family:var(--mono);font-size:44px;line-height:48px;font-weight:500;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12.5px;line-height:18px;color:var(--muted)}
+.kpi .t{font-size:13px;font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:14px}
+.cv{width:100%;display:block;border-radius:10px;touch-action:none;cursor:grab}
+.cv:active{cursor:grabbing}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:18px;height:3px;border-radius:2px;display:inline-block}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;color:var(--muted);font-weight:500}
+.field input,.field select,.field textarea{min-height:44px;background:var(--deep);border:1px solid var(--line);border-radius:6px;color:var(--ink);padding:8px 10px;font-size:16px}
+.field textarea{min-height:88px;resize:vertical}
+.slider{display:flex;align-items:center;gap:10px}
+.slider input{flex:1;min-height:auto;accent-color:var(--mind);background:none;border:0;padding:0}
+.note{font-size:13px;line-height:20px;color:var(--muted);margin:0}
+.warn{color:var(--warn)}
+table.rep{border-collapse:collapse;width:100%;font-size:14px}
+table.rep th,table.rep td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+table.rep th{color:var(--muted);font-weight:600;font-size:13px}
+.scroll{overflow-x:auto}
+#report-doc{background:#fff;color:#0B1022;border-radius:14px;padding:28px;display:flex;flex-direction:column;gap:16px}
+#report-doc h2{font-family:var(--display);margin:0;font-size:24px}
+#report-doc h3{font-family:var(--display);margin:8px 0 0;font-size:17px}
+#report-doc table{border-collapse:collapse;width:100%;font-size:13.5px}
+#report-doc td,#report-doc th{border-bottom:1px solid #D3D9E8;padding:6px 8px;text-align:left}
+#report-doc th{color:#4D5878;font-weight:600}
+#report-doc .imgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+#report-doc img{width:100%;border-radius:8px;background:#070B18}
+#report-doc .small{font-size:12px;color:#4D5878}
+.reg{display:grid;grid-template-columns:18px minmax(0,1fr) 56px;gap:10px;align-items:start;font-size:14px;line-height:20px;color:var(--soft)}
+.reg b{color:var(--ink);font-weight:600}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
+.btn[aria-pressed="true"]{background:var(--signal);color:var(--on-signal);border-color:var(--signal)}
+.site-foot{max-width:1360px;margin:24px auto 0;padding:24px clamp(16px,3vw,40px) 40px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:18px}
+.foot-top{display:flex;align-items:center;gap:14px}
+.foot-name{font-family:var(--display);font-weight:800;font-size:20px}
+.foot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.foot-grid p{margin:0 0 8px;font-size:14px;line-height:21px;color:var(--soft)}
+.foot-h{font-family:var(--display);font-size:15px;font-weight:700;margin:0 0 8px;color:var(--ink)}
+.foot-legal{margin:0;font-size:12px;line-height:19px;color:var(--muted)}
+.flag-cl{flex:none;border-radius:3px;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--raised);border:1px solid var(--line);color:var(--ink);padding:10px 16px;border-radius:8px;font-size:14px;z-index:20;max-width:90vw}
+@media print{
+  body{background:#fff}
+  header.top,nav.tabs,section:not(#sec-report),.no-print,.toast,.site-foot{display:none!important}
+  #sec-report{display:block!important}
+  .wrap{padding:0;max-width:none}
+  #report-doc{border-radius:0;padding:0}
+}
+@media (prefers-reduced-motion: reduce){ .cv{cursor:default} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+    <span class="lbl" id="hdr-sub">Psicología deportiva · HRV y sistema nervioso autónomo · vista holográfica</span>
+    <h1 class="brand" style="display:flex;align-items:center;gap:12px"><svg class="flag-cl" viewBox="0 0 30 20" width="30" height="20" role="img" aria-label="Bandera de Chile"><rect width="30" height="20" fill="#FFFFFF"/><rect y="10" width="30" height="10" fill="#D52B1E"/><rect width="10" height="10" fill="#0039A6"/><polygon fill="#FFFFFF" points="5,2.2 5.9,4.0 7.9,4.3 6.4,5.7 6.8,7.7 5,6.7 3.2,7.7 3.6,5.7 2.1,4.3 4.1,4.0"/></svg><span>Psico-HRV-Holo</span></h1>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <span class="chip" id="chip-src"><span class="dot" id="dot-src"></span><span id="txt-src">Sin banda de FC</span></span>
+    <span class="chip" id="chip-q"><span class="dot" id="dot-q"></span><span id="txt-q">Calidad RR: sin datos</span></span>
+    <span class="chip mono" id="chip-time">00:00</span>
+    <button class="btn primary" id="btn-connect" type="button">Conectar banda FC</button>
+    <button class="btn" id="btn-demo" type="button">Modo demostración</button>
+    <button class="btn" id="btn-rec" type="button">Iniciar registro</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Secciones">
+  <button class="tab" role="tab" id="tab-mon" aria-controls="sec-mon" aria-selected="true">Monitor</button>
+  <button class="tab" role="tab" id="tab-twin" aria-controls="sec-twin" aria-selected="false">Gemelo 3D</button>
+  <button class="tab" role="tab" id="tab-user" aria-controls="sec-user" aria-selected="false">Usuario</button>
+  <button class="tab" role="tab" id="tab-report" aria-controls="sec-report" aria-selected="false">Informe</button>
+</nav>
+
+<!-- ═══════════ MONITOR ═══════════ -->
+<section id="sec-mon" role="tabpanel" aria-labelledby="tab-mon" style="display:flex;flex-direction:column;gap:18px">
+
+  <!-- ═══ SNA Temporal Chart — réplica de vo2lab.html (pestaña HRV & SNA) [SNA-VO2LAB-2026-10-23] ═══ -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2 class="h3">🧠 Sistema Nervioso Autónomo y HRV</h2>
+      <span class="lbl">Último minuto · 60 puntos</span>
+    </div>
+    <div style="background:var(--deep);border-radius:10px;padding:12px">
+      <div style="position:relative;height:260px"><canvas id="sna-chart" role="img" aria-label="Índices simpático y parasimpático, HRV normalizada y FC del último minuto"></canvas></div>
+      <p class="note" id="sna-chart-msg" hidden style="text-align:center;padding:100px 0">No se pudo cargar Chart.js (sin conexión a internet).</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+      <div style="background:rgba(255,140,0,0.08);border-left:3px solid #FF8C00;border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:12px;color:#FF8C00;text-transform:uppercase;font-weight:600">⚡ Simpático (Acelerador)</div>
+        <div class="mono" style="font-size:34px;font-weight:600;color:#FF8C00" id="k-sns">--</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.35;margin-top:4px">Activa energía ante estrés/esfuerzo.<br>↑ FC, ↓ HRV · Índice ~ intensidad actual</div>
+      </div>
+      <div style="background:rgba(0,200,100,0.08);border-left:3px solid #00C864;border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:12px;color:#00C864;text-transform:uppercase;font-weight:600">🧘 Parasimpático (Freno)</div>
+        <div class="mono" style="font-size:34px;font-weight:600;color:#00C864" id="k-pns">--</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.35;margin-top:4px">Favorece recuperación.<br>↓ FC, ↑ HRV · Índice ~ HRV relativo al baseline</div>
+      </div>
+      <div style="background:rgba(0,200,255,0.08);border-left:3px solid #00C8FF;border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:12px;color:#00C8FF;text-transform:uppercase;font-weight:600">HRV (RMSSD)</div>
+        <div class="mono" style="font-size:34px;font-weight:600;color:#00C8FF" id="k-hrv">--</div>
+        <div style="font-size:12px;color:var(--muted)">ms · <span id="k-hrv-sub">--</span></div>
+      </div>
+      <div style="background:rgba(229,72,77,0.08);border-left:3px solid #E5484D;border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:12px;color:#E5484D;text-transform:uppercase;font-weight:600">❤️ FC</div>
+        <div class="mono" style="font-size:34px;font-weight:600;color:#E5484D" id="k-fc">--</div>
+        <div style="font-size:12px;color:var(--muted)" id="k-fc-sub">lpm · banda, o media RR</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="card holo" style="flex:3 1 560px">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px">
+        <h2 class="h3">Holograma de Poincaré 3D</h2>
+        <div style="display:flex;gap:8px"><button class="btn" id="btn-spin" type="button">Detener giro</button><button class="btn" id="btn-pc-reset" type="button">Vista inicial</button></div>
+      </div>
+      <canvas class="cv" id="cv-pc" height="420" role="img" aria-label="Nube 3D de latidos: cada punto une tres intervalos RR consecutivos. Arrastra para girar."></canvas>
+      <div class="legend"><span>Cada punto = (RRₙ, RRₙ₊₁, RRₙ₊₂)</span><span class="mono" id="pc-sd">SD1 -- · SD2 -- ms</span><span id="pc-n">0 tríos válidos</span></div>
+      <p class="note">Nube gruesa («ovillo») = freno activo; nube aplastada en aguja = freno débil. Solo latidos válidos contiguos. Arrastra para girar.</p>
+    </div>
+    <div class="card holo" style="flex:2 1 380px">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px">
+        <h2 class="h3">Radar cuerpo–mente</h2>
+        <button class="btn" id="btn-radar" type="button">Vista plana</button>
+      </div>
+      <canvas class="cv" id="cv-radar" height="420" role="img" aria-label="Radar de seis ejes: freno, FC de reposo y alfa 1 del cuerpo; confianza, calma somática y calma cognitiva de la mente; hoy frente a la basal."></canvas>
+      <div class="legend"><span><i class="sw" style="background:var(--pns)"></i>Cuerpo</span><span><i class="sw" style="background:var(--mind)"></i>Mente (autoinforme)</span><span><i class="sw" style="background:var(--muted)"></i>Basal (punteado)</span></div>
+      <div class="scroll"><table class="rep" id="radar-tbl"></table></div>
+    </div>
+  </div>
+
+  <div class="card holo">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px">
+      <h2 class="h3">Paisaje autonómico 3D de la prueba</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="btn-land-reset" type="button">Vista inicial</button></div>
+    </div>
+    <canvas class="cv" id="cv-land" height="460" role="img" aria-label="Vista en perspectiva de la sesión: cintas de FC, acelerador, freno y HRV sobre un suelo coloreado por zona de FC. Arrastra para girar."></canvas>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--ink)"></i>FC (40–200 lpm)</span>
+      <span><i class="sw" style="background:var(--sns)"></i>Acelerador (0–100)</span>
+      <span><i class="sw" style="background:var(--pns)"></i>Freno (0–100)</span>
+      <span><i class="sw" style="background:var(--hrv)"></i>HRV RMSSD (0–120 ms)</span>
+      <span>Suelo: zonas de FC (Karvonen, con FC reposo y máxima del usuario)</span>
+    </div>
+    <p class="note" id="land-note">Inicia el registro para construir el paisaje de la sesión (1 muestra por segundo). Para leer valores exactos, usa la tabla del informe.</p>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px">
+      <h2 class="h3">Intervalos RR</h2>
+      <span class="lbl mono" id="rr-count">0 RR</span>
+    </div>
+    <canvas class="cv" id="cv-rr" height="170" style="cursor:default" role="img" aria-label="Tacograma de los últimos 120 segundos con artefactos marcados"></canvas>
+    <div class="legend"><span><i class="sw" style="background:var(--ink)"></i>RR válido</span><span>× artefacto excluido</span><span>○ RR sintético (banda sin RR)</span></div>
+  </div>
+</section>
+
+<!-- ═══════════ GEMELO 3D [TWIN-2026-10-23] ═══════════ -->
+<section id="sec-twin" role="tabpanel" aria-labelledby="tab-twin" hidden style="flex-direction:column;gap:18px">
+  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:0;flex:1 1 560px">
+      <h2 class="h3" style="font-size:24px;line-height:30px">Gemelo fisiológico holográfico</h2>
+      <p class="note" style="font-size:15px;line-height:23px;color:var(--soft)">Cuerpo, corazón por cavidades, pulmones por lóbulos, nervio vago, cadena simpática y cerebro segmentado, todo anatómico y open source. Late, respira y se ilumina con las lecturas de la banda.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+      <div role="group" aria-label="Enfocar la vista" style="display:flex;gap:6px">
+        <button class="btn tw-focus" data-focus="body" aria-pressed="true" type="button">Cuerpo</button>
+        <button class="btn tw-focus" data-focus="heart" aria-pressed="false" type="button">Corazón</button>
+        <button class="btn tw-focus" data-focus="brain" aria-pressed="false" type="button">Cerebro</button>
+      </div>
+      <div role="group" aria-label="Estilo de la vista" style="display:flex;gap:6px">
+        <button class="btn tw-style" data-style="atlas" aria-pressed="true" type="button">Atlas</button>
+        <button class="btn tw-style" data-style="holo" aria-pressed="false" type="button">Holograma</button>
+      </div>
+      <button class="btn" id="tw-spin" type="button">Detener giro</button>
+    </div>
+  </div>
+
+  <div class="card" style="background:var(--deep);padding:12px">
+    <div id="tw-box" style="position:relative;width:100%;aspect-ratio:1000/620;border-radius:10px;overflow:hidden;background:var(--deep)">
+      <canvas id="tw-main" aria-label="Figura humana holográfica en 3D con órganos; arrastra para girarla" style="position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none"></canvas>
+      <svg viewBox="0 0 1000 620" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" aria-hidden="true">
+        <path id="tw-leaders" fill="none" stroke="#2C3A5E" stroke-width="1"></path>
+        <path id="tw-dots" fill="#EEF2FA" opacity="0.6"></path>
+        <g font-family="IBM Plex Mono, monospace">
+          <rect x="20" y="50" width="250" height="84" rx="8" fill="#0E1530" fill-opacity="0.88" stroke="#2C3A5E"></rect>
+          <rect x="34" y="64" width="10" height="10" fill="#B388FF"></rect>
+          <text x="52" y="74" fill="#B388FF" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="600">Mente · ansiedad reportada</text>
+          <text x="34" y="110" fill="#B388FF" font-size="24"><tspan id="tw-anx">--</tspan><tspan font-size="12" fill="#95A1BE"> / 10</tspan></text>
+          <text x="34" y="126" font-size="12" fill="#95A1BE">ínsula y cíngulo · simbólico</text>
+          <rect x="20" y="190" width="250" height="84" rx="8" fill="#0E1530" fill-opacity="0.88" stroke="#2C3A5E"></rect>
+          <circle cx="38" cy="210" r="3" fill="#00C864"></circle><circle cx="46" cy="210" r="3" fill="#00C864"></circle>
+          <text x="56" y="214" fill="#00C864" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="600">Freno · nervio vago</text>
+          <text x="34" y="250" fill="#00C864" font-size="24" id="tw-p">--</text>
+          <text x="34" y="266" font-size="12" fill="#95A1BE">índice parasimpático (0–100 %)</text>
+          <rect x="20" y="330" width="250" height="84" rx="8" fill="#0E1530" fill-opacity="0.88" stroke="#2C3A5E"></rect>
+          <line x1="34" x2="48" y1="350" y2="350" stroke="#FF8C00" stroke-width="3"></line>
+          <text x="56" y="354" fill="#FF8C00" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="600">Acelerador · simpático</text>
+          <text x="34" y="390" fill="#FF8C00" font-size="24" id="tw-s">--</text>
+          <text x="34" y="406" font-size="12" fill="#95A1BE">índice simpático (0–100 %)</text>
+          <rect x="730" y="110" width="250" height="130" rx="8" fill="#0E1530" fill-opacity="0.88" stroke="#2C3A5E"></rect>
+          <circle cx="750" cy="130" r="5" fill="#EEF2FA"></circle>
+          <text x="762" y="134" fill="#EEF2FA" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="600">Corazón</text>
+          <text x="744" y="168" fill="#EEF2FA" font-size="24"><tspan id="tw-hr">--</tspan><tspan font-size="12" fill="#95A1BE"> lpm</tspan></text>
+          <text x="744" y="184" font-size="12" fill="#95A1BE">α1 <tspan id="tw-a1">--</tspan> · ECG ilustrativo</text>
+          <g transform="translate(744 196)"><line x1="0" x2="222" y1="18.6" y2="18.6" stroke="#24304F"></line><path id="tw-ecg" fill="none" stroke="#EEF2FA" stroke-width="1.5"></path></g>
+          <rect x="730" y="260" width="250" height="110" rx="8" fill="#0E1530" fill-opacity="0.88" stroke="#2C3A5E"></rect>
+          <text x="744" y="284" fill="#C9D2E6" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="600">Pulmones</text>
+          <text x="744" y="318" fill="#EEF2FA" font-size="24"><tspan id="tw-fr">--</tspan><tspan font-size="12" fill="#95A1BE"> resp/min</tspan></text>
+          <text x="744" y="340" font-size="12" fill="#95A1BE" id="tw-l1">FR estimada desde la HRV</text>
+          <text x="744" y="358" font-size="12" fill="#95A1BE" id="tw-l2">sin VO₂ ni VCO₂ en esta página</text>
+          <rect x="730" y="400" width="250" height="84" rx="8" fill="#0E1530" fill-opacity="0.88" stroke="#2C3A5E"></rect>
+          <text x="744" y="424" fill="#C9D2E6" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="600">Piernas · intensidad</text>
+          <text x="744" y="460" font-size="24" id="tw-zone" fill="#6B7699">--</text>
+          <text x="744" y="476" font-size="12" fill="#95A1BE">estimada por α1 y reserva FC</text>
+          <text x="500" y="34" text-anchor="middle" font-family="Bricolage Grotesque, system-ui, sans-serif" font-weight="700" font-size="20" fill="#EEF2FA" id="tw-phase">Sin datos</text>
+          <text x="500" y="54" text-anchor="middle" font-size="12" fill="#95A1BE" id="tw-clock">--</text>
+          <text x="500" y="606" text-anchor="middle" font-size="12" fill="#95A1BE">Arrastra para girar · rueda o pellizco para acercar</text>
+        </g>
+      </svg>
+      <div id="tw-mode" hidden style="position:absolute;left:12px;bottom:28px;max-width:70%;font-size:12px;line-height:17px;color:var(--warn);background:rgba(7,11,24,.85);border:1px solid #2C3A5E;border-radius:6px;padding:4px 8px"></div>
+      <div id="tw-msg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:14px;line-height:22px;color:var(--soft);text-align:left;max-width:86%;white-space:pre-line;background:rgba(7,11,24,.85);padding:12px 14px;border-radius:8px">Cargando modelo anatómico…</div>
+    </div>
+  </div>
+
+  <div class="card" id="tw-2d-help" hidden>
+    <h2 class="h3">Por qué 2D: el navegador no entrega WebGL</h2>
+    <p class="note" style="font-size:14px;line-height:21px;color:var(--soft)">El gemelo sigue funcionando con el motor de respaldo: los mismos modelos anatómicos como holograma de puntos, que laten, respiran y se iluminan con las lecturas. Para volver al modo completo (superficies y resplandor), el navegador debe tener la GPU activa:</p>
+    <ol class="note" style="font-size:14px;line-height:22px;color:var(--soft);margin:0;padding-left:20px">
+      <li>Cierra todos los procesos de Chrome (Administrador de tareas) y vuelve a abrir; en <span class="mono">chrome://gpu</span> la línea WebGL debe decir «Hardware accelerated».</li>
+      <li>Si sigue desactivada: Configuración de Windows → Pantalla → Gráficos → Chrome → «Alto rendimiento» (GPU NVIDIA), y <span class="mono">chrome://flags/#ignore-gpu-blocklist</span> → Enabled.</li>
+      <li>Alternativa inmediata: abrir la página en Edge, o lanzar Chrome con <span class="mono">--enable-unsafe-swiftshader</span> (WebGL por software).</li>
+    </ol>
+    <p class="note">La página vuelve sola al modo completo en cuanto el navegador entregue la GPU (lo comprueba cada 15 s), sin perder la sesión.</p>
+    <div><button class="btn primary" id="tw-retry" type="button">Reintentar con GPU ahora</button></div>
+  </div>
+
+  <div class="row">
+    <div class="card" style="background:var(--deep);flex:1 1 420px;padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 8px 0"><h2 class="h3">Cerebro · red autonómica central</h2><span class="lbl" id="tw-brain-ph">--</span></div>
+      <div style="position:relative;width:100%;aspect-ratio:1/1;max-height:560px;border-radius:10px;overflow:hidden">
+        <canvas id="tw-brain" aria-label="Cerebro en 3D con las regiones autonómicas iluminadas; arrastra para girarlo" style="position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none"></canvas>
+      </div>
+    </div>
+    <div class="card" style="flex:1 1 420px">
+      <h2 class="h3">Qué se ilumina y por qué</h2>
+      <div class="reg"><span class="dot" style="background:var(--pns);width:14px;height:14px"></span><div><b>Freno</b> · giro recto (prefrontal ventromedial) y cíngulo anterior rostral. Inhiben la amígdala y activan el vago: la base cerebral de una HRV alta.<div class="bar"><div id="tw-b-freno" style="height:6px;width:0;background:var(--pns)"></div></div></div><span class="mono" id="tw-b-freno-v" style="text-align:right">--</span></div>
+      <div class="reg"><span class="dot" style="background:var(--sns);width:14px;height:14px"></span><div><b>Acelerador</b> · amígdala, hipotálamo y sustancia gris periacueductal (mesencéfalo). Disparan la respuesta simpática ante esfuerzo o amenaza.<div class="bar"><div id="tw-b-acel" style="height:6px;width:0;background:var(--sns)"></div></div></div><span class="mono" id="tw-b-acel-v" style="text-align:right">--</span></div>
+      <div class="reg"><span style="width:14px;height:14px;background:var(--mind);display:inline-block"></span><div><b>Mente</b> · ínsula y cíngulo anterior caudal. Perciben el estado del cuerpo (interocepción); aquí reflejan la ansiedad reportada en Usuario.<div class="bar"><div id="tw-b-mente" style="height:6px;width:0;background:var(--mind)"></div></div></div><span class="mono" id="tw-b-mente-v" style="text-align:right">--</span></div>
+      <div class="reg"><span class="dot" id="tw-b-bulbo-dot" style="width:14px;height:14px"></span><div><b>Bulbo raquídeo</b> · contiene el núcleo del vago (freno) y el bulbo ventrolateral rostral (acelerador). Su color mezcla ambos según cuál domina.</div><span class="mono" id="tw-b-bulbo-v" style="text-align:right">--</span></div>
+      <div style="background:#0E1530;border:1px solid #2C3A5E;border-radius:10px;padding:12px 14px;font-size:14px;line-height:21px;color:var(--soft)"><strong style="color:var(--ink)">Honestidad:</strong> es un modelo conceptual (red autonómica central, Benarroch 1993; integración neurovisceral, Thayer y Lane 2000). La iluminación se infiere de la HRV y del autorreporte: no es una medición del cerebro, que requeriría fMRI o EEG.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="h3">Dinámica cardíaca sincronizada</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
+      <p class="note" style="font-size:15px;line-height:23px;color:var(--soft)"><strong style="color:var(--ink)">Aurículas</strong> se contraen primero (onda P). <strong style="color:var(--ink)">0.16 s después</strong> se contraen los ventrículos (QRS) durante el intervalo QT, que se acorta al subir la FC (corrección de Bazett).</p>
+      <p class="note" style="font-size:15px;line-height:23px;color:var(--soft)">Cada cavidad del modelo se mueve por separado con esos tiempos y a la FC medida; el trazo del panel del corazón dibuja el ECG equivalente latido a latido.</p>
+      <p class="note" style="font-size:15px;line-height:23px;color:var(--soft)"><strong style="color:var(--ink)">Límite:</strong> la banda torácica entrega los intervalos RR, no un ECG diagnóstico; el trazo es ilustrativo y la contracción es un modelo, no una imagen del corazón real.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="h3">Cuatro momentos clave de la sesión, lado a lado</h2>
+    <div style="position:relative;width:100%;aspect-ratio:1000/320;background:var(--deep);border-radius:10px;overflow:hidden">
+      <canvas id="tw-strip" aria-label="Cuatro figuras: inicio, primer umbral estimado, segundo umbral estimado y final de la sesión" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
+    </div>
+    <div id="tw-strip-cap" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;text-align:center;font-size:13px"></div>
+    <p class="note">Momentos tomados del registro: inicio, primer cruce de α1 bajo 0.75 (≈ umbral 1) y bajo 0.50 (≈ umbral 2) con al menos 30 % de la reserva de FC, y final. Sin gases los umbrales son estimaciones (± 1 min).</p>
+  </div>
+
+  <div class="card">
+    <h2 class="h3">Componentes open source</h2>
+    <div class="scroll">
+      <table class="rep" style="min-width:720px">
+        <thead><tr><th>Componente</th><th>Qué aporta</th><th>Licencia</th></tr></thead>
+        <tbody>
+          <tr><td>MakeHuman hm08</td><td>Cuerpo humano completo (piel)</td><td>CC0 1.0</td></tr>
+          <tr><td>Z-Anatomy (BodyParts3D)</td><td>Aurículas y ventrículos, 5 lóbulos pulmonares, nervios vagos, cadenas y ganglios simpáticos, aorta y vena cava</td><td>CC BY-SA 4.0 · atribución y misma licencia para los modelos derivados</td></tr>
+          <tr><td>Open Anatomy · SPL/NAC Brain Atlas</td><td>Cerebro segmentado: giro recto, cíngulo, ínsula, amígdala, hipotálamo, mesencéfalo, bulbo y corteza</td><td>Licencia 3D Slicer (permisiva)</td></tr>
+          <tr><td>three.js r147</td><td>Render WebGL, bloom y control orbital</td><td>MIT</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Créditos: MakeHuman (makehumancommunity.org, CC0) · Z-Anatomy, G. Kervyn y M. Zielinski, derivado de BodyParts3D © DBCLS (CC BY-SA 4.0) · SPL/NAC Brain Atlas, Halle M., Talos I-F., Jakab M., Makris N., Meier D., Wald L., Fischl B., Kikinis R., Open Anatomy Project (licencia 3D Slicer) · three.js (MIT).</p>
+  </div>
+</section>
+
+<!-- ═══════════ USUARIO ═══════════ -->
+<section id="sec-user" role="tabpanel" aria-labelledby="tab-user" hidden style="flex-direction:column;gap:18px">
+  <div class="card">
+    <h2 class="h3">Datos del evaluado</h2>
+    <div class="form">
+      <div class="field"><label for="u-name">Nombre</label><input id="u-name" autocomplete="off"></div>
+      <div class="field"><label for="u-age">Edad (años)</label><input id="u-age" type="number" min="5" max="100" inputmode="numeric"></div>
+      <div class="field"><label for="u-sex">Sexo</label><select id="u-sex"><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
+      <div class="field"><label for="u-weight">Peso (kg)</label><input id="u-weight" type="number" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="u-height">Talla (cm)</label><input id="u-height" type="number" inputmode="numeric"></div>
+      <div class="field"><label for="u-activity">Actividad</label><select id="u-activity"><option value="sedentary">Sedentario</option><option value="active">Activo</option><option value="trained">Entrenado</option><option value="elite">Alto rendimiento</option></select></div>
+      <div class="field"><label for="u-hr-rest">FC de reposo (lpm)</label><input id="u-hr-rest" type="number" inputmode="numeric" placeholder="60"></div>
+      <div class="field"><label for="u-hr-max">FC máxima (lpm)</label><input id="u-hr-max" type="number" inputmode="numeric" placeholder="190"></div>
+      <div class="field"><label for="u-sport">Deporte / disciplina</label><input id="u-sport" autocomplete="off"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 class="h3">Evaluador</h2>
+    <div class="form">
+      <div class="field"><label for="u-evaluator">Nombre y grado</label><input id="u-evaluator" placeholder="PhD, MSc Claudio Abarca Vargas"></div>
+      <div class="field"><label for="u-institution">Institución</label><input id="u-institution"></div>
+      <div class="field" style="grid-column:1/-1"><label for="u-notes">Notas de la sesión</label><textarea id="u-notes"></textarea></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 class="h3">Mente: autoinforme previo (0–10)</h2>
+    <p class="note">Alimenta los tres ejes de la mente del radar. Escala breve inspirada en el CSAI-2R (confianza, ansiedad somática y ansiedad cognitiva). No reemplaza el cuestionario validado.</p>
+    <div class="form">
+      <div class="field"><label for="m-conf">Confianza</label><div class="slider"><input id="m-conf" type="range" min="0" max="10" step="1" value="6"><span class="mono" id="m-conf-v">6</span></div></div>
+      <div class="field"><label for="m-som">Ansiedad somática (tensión corporal)</label><div class="slider"><input id="m-som" type="range" min="0" max="10" step="1" value="4"><span class="mono" id="m-som-v">4</span></div></div>
+      <div class="field"><label for="m-cog">Ansiedad cognitiva (preocupación)</label><div class="slider"><input id="m-cog" type="range" min="0" max="10" step="1" value="4"><span class="mono" id="m-cog-v">4</span></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 class="h3">Línea basal personal</h2>
+    <p class="note">La basal escala el radar y el índice parasimpático. Lo ideal: 5 min sentado, en calma, antes de la prueba. Pulsa «Guardar basal» al final de ese registro.</p>
+    <div class="form">
+      <div class="field"><label for="b-rmssd">RMSSD basal (ms)</label><input id="b-rmssd" type="number" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="b-hr">FC basal (lpm)</label><input id="b-hr" type="number" step="0.1" inputmode="decimal"></div>
+      <div class="field"><label for="b-a1">DFA α1 basal</label><input id="b-a1" type="number" step="0.01" inputmode="decimal"></div>
+      <div class="field"><label for="b-date">Fecha de la basal</label><input id="b-date" readonly></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn primary" id="btn-base" type="button">Guardar basal con los valores actuales</button><button class="btn" id="btn-base-clear" type="button">Borrar basal</button></div>
+  </div>
+  <p class="note">Los datos del usuario se guardan solo en este navegador.</p>
+</section>
+
+<!-- ═══════════ INFORME ═══════════ -->
+<section id="sec-report" role="tabpanel" aria-labelledby="tab-report" hidden style="flex-direction:column;gap:18px">
+  <div class="card no-print">
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <button class="btn primary" id="btn-rep-build" type="button">Generar informe</button>
+      <button class="btn" id="btn-rep-print" type="button">Imprimir / PDF</button>
+      <button class="btn" id="btn-rep-html" type="button">Descargar HTML</button>
+      <button class="btn" id="btn-rep-csv" type="button">Exportar sesión (CSV)</button>
+      <button class="btn" id="btn-rep-rr" type="button">Exportar RR (.txt)</button>
+    </div>
+    <p class="note">El informe usa la sesión registrada (botón «Iniciar registro»). Las imágenes 3D se capturan tal como se ven en el Monitor.</p>
+  </div>
+  <div id="report-doc"><p class="small">Pulsa «Generar informe».</p></div>
+</section>
+
+</div>
+<!-- ═══════════ PIE DE PÁGINA · autoría e institución ═══════════ -->
+<footer class="site-foot">
+  <div class="foot-top">
+    <svg class="flag-cl" viewBox="0 0 30 20" width="30" height="20" role="img" aria-label="Bandera de Chile"><rect width="30" height="20" fill="#FFFFFF"/><rect y="10" width="30" height="10" fill="#D52B1E"/><rect width="10" height="10" fill="#0039A6"/><polygon fill="#FFFFFF" points="5,2.2 5.9,4.0 7.9,4.3 6.4,5.7 6.8,7.7 5,6.7 3.2,7.7 3.6,5.7 2.1,4.3 4.1,4.0"/></svg>
+    <div>
+      <div class="foot-name">Psico-HRV-Holo</div>
+      <div class="lbl">Variabilidad cardiaca y sistema nervioso autónomo para la psicología deportiva</div>
+    </div>
+  </div>
+  <div class="foot-grid">
+    <div>
+      <h2 class="foot-h">Autoría</h2>
+      <p>Creado por <strong>Claudio Abarca Vargas</strong>, PhD, MSc, investigador en ciencias del deporte: concepción, fisiología, diseño de la evaluación y dirección del desarrollo.</p>
+      <p>Desarrollado con la asistencia de inteligencia artificial: <strong>Claude</strong> (Anthropic), en programación, visualización y documentación, bajo la dirección y revisión del autor.</p>
+      <p><a href="mailto:claudio.abarca@ind.cl">claudio.abarca@ind.cl</a> · <a href="https://github.com/Csav20" rel="noopener">github.com/Csav20</a></p>
+    </div>
+    <div>
+      <h2 class="foot-h">Institución</h2>
+      <p>Parte del proceso de la <strong>Unidad de Ciencias Aplicadas al Deporte</strong>.</p>
+      <p>Nació en el <strong>Área de Innovación Deportiva</strong> del <strong>Departamento de Alto Rendimiento</strong> del <strong>Instituto Nacional de Deportes de Chile</strong>, en la Unidad de Ciencias Aplicadas al Deporte.</p>
+      <p>Hecho en Chile.</p>
+    </div>
+    <div>
+      <h2 class="foot-h">Uso y privacidad</h2>
+      <p>Visualización educativa de la HRV y del sistema nervioso autónomo: no es un dispositivo médico ni entrega diagnósticos. La iluminación del gemelo y el ECG son ilustrativos.</p>
+      <p>Los datos se procesan y se guardan solo en este navegador; no se envían a ningún servidor.</p>
+      <p>Funciona en Chrome o Edge (computador y Android). En iPhone se ve todo y funciona la demostración, pero el navegador no permite Bluetooth.</p>
+    </div>
+  </div>
+  <p class="foot-legal">Modelos 3D: MakeHuman hm08 (CC0) · Z-Anatomy, G. Kervyn y M. Zielinski, derivado de BodyParts3D © DBCLS (CC BY-SA 4.0) · SPL/NAC Brain Atlas, Open Anatomy Project (licencia 3D Slicer) · three.js (MIT) · Chart.js (MIT).<br>© 2026 Claudio Abarca Vargas. Código y diseño: todos los derechos reservados. Los modelos 3D mantienen sus licencias.</p>
+</footer>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+'use strict';
+// ══ Utilidades ══
+const $ = (id) => document.getElementById(id);
+const safeN = (v, d = 0) => { const n = parseFloat(v); return isFinite(n) ? n : d; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = (v, d = 0) => (v == null || !isFinite(v)) ? '--' : v.toFixed(d);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('vo2hrv.' + k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
+  set(k, v) { try { localStorage.setItem('vo2hrv.' + k, JSON.stringify(v)); } catch (_) {} },
+};
+let _toastT = 0;
+function toast(msg) { const el = $('toast'); el.textContent = msg; el.hidden = false; clearTimeout(_toastT); _toastT = setTimeout(() => { el.hidden = true; }, 3200); }
+const COL = { ink: '#EEF2FA', muted: '#95A1BE', line: '#24304F', pns: '#00C864', sns: '#FF8C00', mind: '#B388FF', hrv: '#00C8FF', holo: '#00C8FF', ok: '#4CC28A', warn: '#F5C451', deep: '#070B18' };
+
+// ══ Estado ══
+const S = {
+  rr: [], flags: [], ts: [],          // ventana RR (120 s), paralela [RR-ART]
+  allRR: [],                           // todos los RR de la sesión registrada {t, rr, flag}
+  hrLast: 0, hrTs: 0,
+  metrics: { valid: false, reason: 'few' },
+  hrvBaseline: 0,                      // misma lógica que vo2lab (primer RMSSD estable)
+  sns: null, pns: null, a1: null,
+  src: 'none',                         // none | beat | synth | demo
+  device: null, demoTimer: 0,
+  rec: false, t0: 0, samples: [],
+  dirty: true,
+};
+
+// ══ MÓDULO: Calidad RR — idéntico a vo2lab [RR-ART-2026-10-22] ══
+const RR_FLAG = { OK: 0, ARTIFACT: 1, SYNTH: 2 };
+const RR_SRC = { BEAT: 'beat', SYNTH: 'synth' };
+const RR_ART_REL_TOL = 0.20, RR_ART_REF_N = 5, RR_ART_MIN_REF = 3, RR_ART_MAX_PCT = 5;
+const HRV_MIN_OK_BEATS = 6, HRV_NN50_MS = 50, RR_WINDOW_MS = 120000;
+const HRV_REASON_TXT = { few: 'Recolectando RR', art: 'Calidad RR insuficiente', synth: 'Sin RR reales del sensor' };
+function rrMedian(a) { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+function rrClassify(rrMs, prevRaw, source) {
+  if (source === RR_SRC.SYNTH) return RR_FLAG.SYNTH;
+  const ref = prevRaw.slice(-RR_ART_REF_N);
+  if (ref.length < RR_ART_MIN_REF) return RR_FLAG.OK;
+  const med = rrMedian(ref);
+  if (!(med > 0.01)) return RR_FLAG.OK;
+  return Math.abs(rrMs - med) / med > RR_ART_REL_TOL ? RR_FLAG.ARTIFACT : RR_FLAG.OK;
+}
+function hrvSuccessiveDiffs(rr, flags) { const d = []; for (let i = 1; i < rr.length; i++) if (flags[i] === RR_FLAG.OK && flags[i - 1] === RR_FLAG.OK) d.push(Math.abs(rr[i] - rr[i - 1])); return d; }
+function hrvWindowQuality(flags) {
+  let nOk = 0, nArt = 0, nSynth = 0;
+  for (const f of flags) { if (f === RR_FLAG.OK) nOk++; else if (f === RR_FLAG.ARTIFACT) nArt++; else nSynth++; }
+  const nBeats = nOk + nArt, artPct = nBeats > 0 ? 100 * nArt / nBeats : 0;
+  let reason = '';
+  if (nOk < HRV_MIN_OK_BEATS) reason = nSynth > 0 ? 'synth' : 'few'; else if (artPct > RR_ART_MAX_PCT) reason = 'art';
+  return { nOk, nArt, nSynth, artPct, valid: reason === '', reason };
+}
+function computeHrvTimeDomain(rr, flags) {
+  const q = hrvWindowQuality(flags);
+  const empty = { rmssd: 0, sdnn: 0, pnn50: 0, meanRR: 0, ...q };
+  if (!q.valid) return empty;
+  const ok = rr.filter((v, i) => flags[i] === RR_FLAG.OK);
+  const diffs = hrvSuccessiveDiffs(rr, flags);
+  if (diffs.length < HRV_MIN_OK_BEATS - 1) return { ...empty, valid: false, reason: 'few' };
+  const rmssd = Math.sqrt(diffs.reduce((s, d) => s + d * d, 0) / diffs.length);
+  const meanRR = ok.reduce((s, v) => s + v, 0) / ok.length;
+  const sdnn = Math.sqrt(ok.reduce((s, v) => s + (v - meanRR) ** 2, 0) / ok.length);
+  const pnn50 = 100 * diffs.filter((d) => d > HRV_NN50_MS).length / diffs.length;
+  return { rmssd, sdnn, pnn50, meanRR, ...q };
+}
+
+// ══ Índices SNS/PNS — misma fórmula que vo2lab computeHRV() ══
+function computeSnaIndices(m) {
+  if (!S.hrvBaseline && m.rmssd > 5 && m.nOk >= 20) S.hrvBaseline = m.rmssd;
+  const base = S.baseRmssd || S.hrvBaseline;   // S.baseRmssd se actualiza fuera del handler (R-BLE-04)
+  const hr = 60000 / m.meanRR;
+  const snsRaw = clamp((hr - 55) * 1.8, 0, 100);
+  const pnsRaw = clamp((base ? m.rmssd / base : 1) * 55, 0, 100);
+  const total = snsRaw + pnsRaw;
+  if (total > 0) { S.sns = Math.round(snsRaw / total * 100); S.pns = 100 - S.sns; }
+}
+
+// ══ DFA α1 (escalas 4–16 latidos, solo latidos válidos de la ventana) ══
+const DFA_MIN_BEATS = 60;
+function computeDfaA1(rr, flags) {
+  const x = rr.filter((v, i) => flags[i] === RR_FLAG.OK);
+  if (x.length < DFA_MIN_BEATS) return null;
+  const mean = x.reduce((s, v) => s + v, 0) / x.length;
+  const y = []; let acc = 0; for (const v of x) { acc += v - mean; y.push(acc); }
+  const lx = [], ly = [];
+  for (let n = 4; n <= 16; n++) {
+    const boxes = Math.floor(y.length / n); if (boxes < 2) continue;
+    let se = 0;
+    for (let b = 0; b < boxes; b++) {
+      let sx = 0, sy = 0, sxx = 0, sxy = 0;
+      for (let k = 0; k < n; k++) { const yy = y[b * n + k]; sx += k; sy += yy; sxx += k * k; sxy += k * yy; }
+      const sl = (n * sxy - sx * sy) / (n * sxx - sx * sx), ic = (sy - sl * sx) / n;
+      for (let k = 0; k < n; k++) { const r = y[b * n + k] - (ic + sl * k); se += r * r; }
+    }
+    const F = Math.sqrt(se / (boxes * n)); if (F > 0) { lx.push(Math.log(n)); ly.push(Math.log(F)); }
+  }
+  if (lx.length < 5) return null;
+  const n = lx.length, sx = lx.reduce((a, b) => a + b, 0), sy = ly.reduce((a, b) => a + b, 0);
+  const sxx = lx.reduce((a, b) => a + b * b, 0), sxy = lx.reduce((a, b, i) => a + b * ly[i], 0);
+  return (n * sxy - sx * sy) / (n * sxx - sx * sx);
+}
+
+// ══ Ingesta RR (llamada desde el handler BLE o la demo: sin DOM) ══
+function feedRR(rrList, hr, source = RR_SRC.BEAT) {
+  const now = Date.now();
+  if (hr > 0) { S.hrLast = hr; S.hrTs = now; }
+  for (const rr of rrList) {
+    const flag = rrClassify(rr, S.rr, source);
+    S.flags.push(flag); S.rr.push(rr); S.ts.push(now);
+    if (S.rec) S.allRR.push({ t: (now - S.t0) / 1000, rr, flag });
+  }
+  const cutoff = now - RR_WINDOW_MS;
+  while (S.ts.length && S.ts[0] < cutoff) { S.ts.shift(); S.rr.shift(); S.flags.shift(); }
+  if (S.rr.length >= HRV_MIN_OK_BEATS) {
+    const m = computeHrvTimeDomain(S.rr, S.flags);
+    S.metrics = m;
+    if (m.valid) { computeSnaIndices(m); S.a1 = computeDfaA1(S.rr, S.flags); }
+    else { S.sns = S.pns = null; S.a1 = null; }
+  }
+  S.dirty = true;
+}
+function currentHR() {
+  if (S.hrLast > 0 && Date.now() - S.hrTs <= 5000) return S.hrLast;
+  return S.metrics.meanRR > 0 ? 60000 / S.metrics.meanRR : null;
+}
+
+// ══ BLE: banda de FC — misma conexión que vo2lab connectHR() ══
+const GARMIN_ADV_UUID = '6a4e3e10-667b-11e3-949a-0800200c9a66';
+const GARMIN_SVC_RUN = '6a4e2500-667b-11e3-949a-0800200c9a66';
+const GARMIN_CHR_HR = '6a4e2502-667b-11e3-949a-0800200c9a66';
+const GARMIN_SVC_CMD = '6a4e2401-667b-11e3-949a-0800200c9a66';
+function parseStandardHR(dv) {
+  const rrList = []; const flags = dv.getUint8(0); let off = 1, hr;
+  if (flags & 0x01) { hr = dv.getUint16(off, true); off += 2; } else { hr = dv.getUint8(off); off += 1; }
+  if (flags & 0x08) off += 2;
+  if (flags & 0x10) { while (off + 1 < dv.byteLength) { const ms = dv.getUint16(off, true) / 1024 * 1000; if (ms > 200 && ms < 2000) rrList.push(ms); off += 2; } }
+  return { hr, rrList };
+}
+function parseGarminHR(dv) {
+  for (let b = 0; b < Math.min(dv.byteLength, 4); b++) { const c = dv.getUint8(b); if (c >= 30 && c <= 220) return { hr: c, rrList: [] }; }
+  return { hr: 0, rrList: [] };
+}
+async function connectHR() {
+  if (!navigator.bluetooth) { toast('Este navegador no tiene Web Bluetooth. Usa Chrome o Edge en https o 127.0.0.1.'); return; }
+  try {
+    const dev = await navigator.bluetooth.requestDevice({
+      filters: [{ services: ['heart_rate'] }, { services: [GARMIN_ADV_UUID] }, { namePrefix: 'Forerunner' }, { namePrefix: 'Garmin' }, { namePrefix: 'fenix' }, { namePrefix: 'vivoactive' }, { namePrefix: 'epix' }],
+      optionalServices: ['heart_rate', GARMIN_ADV_UUID, GARMIN_SVC_RUN, GARMIN_SVC_CMD, '6a4e8022-667b-11e3-949a-0800200c9a66', '6a4e2800-667b-11e3-949a-0800200c9a66'],
+    });
+    const srv = await dev.gatt.connect();
+    let chr, isGarmin = false;
+    try { chr = await (await srv.getPrimaryService('heart_rate')).getCharacteristic('heart_rate_measurement'); }
+    catch (_) {
+      try { chr = await (await srv.getPrimaryService(GARMIN_SVC_RUN)).getCharacteristic(GARMIN_CHR_HR); isGarmin = true; }
+      catch (_2) { throw new Error('No se encontró servicio de FC compatible. En Garmin: Ajustes > Frecuencia cardiaca > Transmitir FC.'); }
+    }
+    stopDemo();
+    await chr.startNotifications();
+    chr.addEventListener('characteristicvaluechanged', (e) => {   // R-BLE-04: solo encola
+      const { hr, rrList } = isGarmin ? parseGarminHR(e.target.value) : parseStandardHR(e.target.value);
+      let src = RR_SRC.BEAT;
+      if (rrList.length === 0 && hr > 30 && hr < 220) { rrList.push(60000 / hr); src = RR_SRC.SYNTH; }
+      S.src = src === RR_SRC.SYNTH ? 'synth' : 'beat';
+      if (hr > 0) feedRR(rrList, hr, src);
+    });
+    dev.addEventListener('gattserverdisconnected', () => { S.device = null; S.src = 'none'; S.hrLast = 0; S.dirty = true; toast('Banda de FC desconectada'); });
+    S.device = { dev, name: dev.name || 'Banda FC', garmin: isGarmin };
+    S.dirty = true;
+    toast('Conectado: ' + S.device.name + (isGarmin ? ' (Garmin, solo FC)' : ''));
+  } catch (e) { if (e && e.name !== 'NotFoundError') toast('Error de conexión: ' + e.message); }
+}
+function disconnectHR() { try { S.device?.dev?.gatt?.disconnect(); } catch (_) {} }
+
+// ══ Demostración (datos de ejemplo) ══
+let _demoT = 0, _demoI = 0, _demoDrift = 0;
+function demoRR() {
+  const m = _demoT / 60, phase = m < 3 ? 0 : m < 13 ? (m - 3) / 10 : Math.max(0, 1 - (m - 13) / 3);
+  const mean = 860 - phase * 470, rsa = 30 * (1 - phase * 0.85);
+  // Deriva AR(1) lenta: da a los RR simulados correlación de largo plazo (α1 ≈ 1 en reposo, como en RR reales)
+  _demoDrift = 0.95 * _demoDrift + (Math.random() - 0.5) * 16 * (1 - phase * 0.7);
+  let rr = mean + _demoDrift + rsa * Math.sin(2 * Math.PI * _demoT / 5) + (Math.random() - 0.5) * 14 * (1 - phase * 0.6);
+  if (Math.random() < 0.006) rr *= 2;                    // latido perdido ocasional
+  _demoT += rr / 1000; _demoI++;
+  return rr;
+}
+function startDemo() {
+  if (S.device) { toast('Desconecta la banda para usar la demostración'); return; }
+  stopDemo(); S.src = 'demo';
+  S.demoTimer = setInterval(() => { const list = []; let acc = 0; while (acc < 1000) { const r = demoRR(); list.push(r); acc += r; } feedRR(list, Math.round(60000 / rrMedian(list))); /* la banda real entrega su FC; aquí la mediana evita que un artefacto la hunda */ S.src = 'demo'; }, 1000);
+  S.dirty = true; toast('Demostración activa: datos de ejemplo');
+}
+function stopDemo() { if (S.demoTimer) { clearInterval(S.demoTimer); S.demoTimer = 0; } if (S.src === 'demo') S.src = 'none'; S.dirty = true; }
+
+// ══ Registro de sesión (1 muestra/s) ══
+function toggleRec() {
+  if (!S.rec) { S.rec = true; S.t0 = Date.now(); S.samples = []; S.allRR = []; toast('Registro iniciado'); }
+  else { S.rec = false; toast('Registro detenido: ' + S.samples.length + ' s'); }
+  S.dirty = true;
+}
+setInterval(() => {
+  if (!S.rec) return;
+  const m = S.metrics, fc = currentHR();
+  S.samples.push({ t: (Date.now() - S.t0) / 1000, fc: fc != null ? fc : null, sns: m.valid ? S.sns : null, pns: m.valid ? S.pns : null,
+    rmssd: m.valid ? m.rmssd : null, a1: m.valid ? S.a1 : null, artPct: m.nArt != null ? m.artPct : null, valid: !!m.valid, fr: estimateFR() });
+  if (S.samples.length % 15 === 0) TW.stripDirty = true;
+  S.dirty = true;
+}, 1000);
+
+// ══ Usuario (persistencia local) ══
+const USER_IDS = ['u-name', 'u-age', 'u-sex', 'u-weight', 'u-height', 'u-activity', 'u-hr-rest', 'u-hr-max', 'u-sport', 'u-evaluator', 'u-institution', 'u-notes', 'm-conf', 'm-som', 'm-cog', 'b-rmssd', 'b-hr', 'b-a1', 'b-date'];
+function loadUser() { const u = store.get('user', {}); USER_IDS.forEach((id) => { if (u[id] != null && $(id)) $(id).value = u[id]; }); syncSliders(); }
+function saveUser() { const u = {}; USER_IDS.forEach((id) => { if ($(id)) u[id] = $(id).value; }); store.set('user', u); }
+function syncSliders() { ['m-conf', 'm-som', 'm-cog'].forEach((id) => { $(id + '-v').textContent = $(id).value; }); S.baseRmssd = safeN($('b-rmssd').value, 0); S.dirty = true; }
+function getPatient() {
+  return { name: $('u-name').value.trim(), age: safeN($('u-age').value, 0), sex: $('u-sex').value, weight: safeN($('u-weight').value, 0),
+    height: safeN($('u-height').value, 0), activity: $('u-activity').selectedOptions[0]?.text || '', sport: $('u-sport').value.trim(),
+    hrRest: safeN($('u-hr-rest').value, 60), hrMax: safeN($('u-hr-max').value, 190),
+    evaluator: $('u-evaluator').value.trim(), institution: $('u-institution').value.trim(), notes: $('u-notes').value.trim() };
+}
+function saveBaseline() {
+  const m = S.metrics; if (!m.valid) { toast('No hay una ventana RR válida para guardar como basal'); return; }
+  $('b-rmssd').value = m.rmssd.toFixed(1); $('b-hr').value = (60000 / m.meanRR).toFixed(1);
+  $('b-a1').value = S.a1 != null ? S.a1.toFixed(2) : ''; $('b-date').value = new Date().toLocaleString('es-CL');
+  saveUser(); syncSliders(); toast('Basal guardada');
+}
+
+// ══ Radar: puntajes 0–1 (basal del cuerpo = 0.75) ══
+const RADAR_AXES = [
+  { k: 'freno', t: 'Freno', body: true }, { k: 'fc', t: 'FC reposo', body: true }, { k: 'a1', t: 'α1 reposo', body: true },
+  { k: 'conf', t: 'Confianza', body: false }, { k: 'som', t: 'Calma somática', body: false }, { k: 'cog', t: 'Calma cognitiva', body: false },
+];
+const BODY_BASE = 0.75;
+function radarScores() {
+  const m = S.metrics, fc = currentHR();
+  const bR = safeN($('b-rmssd').value, 0) || S.hrvBaseline, bH = safeN($('b-hr').value, 0) || getPatient().hrRest, bA = safeN($('b-a1').value, 0) || 1.0;
+  const today = {
+    freno: m.valid && bR ? clamp(m.rmssd / bR * BODY_BASE, 0, 1) : null,
+    fc: fc && bH ? clamp(bH / fc * BODY_BASE, 0, 1) : null,
+    a1: S.a1 != null ? clamp(S.a1 / bA * BODY_BASE, 0, 1) : null,
+    conf: safeN($('m-conf').value, 0) / 10, som: 1 - safeN($('m-som').value, 0) / 10, cog: 1 - safeN($('m-cog').value, 0) / 10,
+  };
+  const mb = store.get('mindBase', { conf: 0.7, som: 0.7, cog: 0.7 });
+  const base = { freno: BODY_BASE, fc: BODY_BASE, a1: BODY_BASE, conf: mb.conf, som: mb.som, cog: mb.cog };
+  return { today, base };
+}
+
+// ══ Lienzos: utilidades 3D ══
+function fitCanvas(cv) {
+  // La altura CSS se lee una sola vez: cv.height (resolución interna = h × dpr) reescribe el atributo
+  if (!cv._h) cv._h = parseFloat(cv.getAttribute('height'));
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.clientWidth, h = cv._h;
+  if (cv._w !== w || cv._dpr !== dpr) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + 'px'; cv._w = w; cv._dpr = dpr; }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, w, h };
+}
+function makeView(yaw, pitch) { return { yaw, pitch, yaw0: yaw, pitch0: pitch, drag: null }; }
+function attachDrag(cv, view, onUser) {
+  cv.addEventListener('pointerdown', (e) => { view.drag = { x: e.clientX, y: e.clientY, yaw: view.yaw, pitch: view.pitch }; cv.setPointerCapture(e.pointerId); onUser && onUser(); });
+  cv.addEventListener('pointermove', (e) => { if (!view.drag) return; view.yaw = view.drag.yaw + (e.clientX - view.drag.x) * 0.01; view.pitch = clamp(view.drag.pitch + (e.clientY - view.drag.y) * 0.006, -0.2, 1.3); S.dirty = true; });
+  cv.addEventListener('pointerup', () => { view.drag = null; });
+  cv.addEventListener('pointercancel', () => { view.drag = null; });
+}
+function projector(view, cx, cy, scale, dist = 4) {
+  const cyw = Math.cos(view.yaw), syw = Math.sin(view.yaw), cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  return (x, y, z) => { const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw; const y2 = y * cp - z1 * sp, z2 = y * sp + z1 * cp; const s = dist / (dist + z2); return { x: cx + x1 * s * scale, y: cy - y2 * s * scale, z: z2, s }; };
+}
+function scanlines(ctx, w, h) { ctx.save(); ctx.globalAlpha = 0.035; ctx.strokeStyle = COL.holo; ctx.lineWidth = 1; ctx.beginPath(); for (let y = 0.5; y < h; y += 4) { ctx.moveTo(0, y); ctx.lineTo(w, y); } ctx.stroke(); ctx.restore(); }
+function emptyMsg(ctx, w, h, txt) { ctx.fillStyle = COL.muted; ctx.font = '14px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(txt, w / 2, h / 2); ctx.textAlign = 'left'; }
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ══ 1 · Holograma de Poincaré 3D ══
+const pcView = makeView(0.6, 0.42); let pcSpin = !reduceMotion;
+function poincareTriplets() {
+  const src = S.rec && S.allRR.length > 30 ? S.allRR.slice(-600) : S.rr.map((rr, i) => ({ rr, flag: S.flags[i] }));
+  const out = []; for (let i = 0; i + 2 < src.length; i++) if (src[i].flag === 0 && src[i + 1].flag === 0 && src[i + 2].flag === 0) out.push([src[i].rr, src[i + 1].rr, src[i + 2].rr]);
+  return out;
+}
+function poincareSD(tr) {
+  if (tr.length < 10) return null;
+  const a = tr.map((t) => t[0]), b = tr.map((t) => t[1]);
+  const d1 = a.map((v, i) => (b[i] - v) / Math.SQRT2), d2 = a.map((v, i) => (b[i] + v) / Math.SQRT2);
+  const sd = (x) => { const m = x.reduce((s, v) => s + v, 0) / x.length; return Math.sqrt(x.reduce((s, v) => s + (v - m) ** 2, 0) / x.length); };
+  return { sd1: sd(d1), sd2: sd(d2) };
+}
+function depthColor(f) { const a = [0, 229, 255], b = [124, 77, 255]; return 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * f)).join(',') + ')'; }
+function drawPoincare(dt) {
+  const { ctx, w, h } = fitCanvas($('cv-pc'));
+  ctx.clearRect(0, 0, w, h);
+  if (pcSpin && !pcView.drag) pcView.yaw += dt * 0.0004;
+  const tr = poincareTriplets(), cx = w / 2, cy = h * 0.47, P = projector(pcView, cx, cy, Math.min(w, h) * 0.34);
+  // anillos de base holográficos
+  ctx.save(); ctx.strokeStyle = COL.holo; ctx.lineWidth = 1.5;
+  [1.25, 0.85, 0.45].forEach((r, i) => { ctx.globalAlpha = 0.55 - i * 0.12; ctx.beginPath(); for (let k = 0; k <= 64; k++) { const a = k / 64 * Math.PI * 2, p = P(Math.cos(a) * r, -1.15, Math.sin(a) * r); k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); } ctx.stroke(); });
+  ctx.restore();
+  // ejes
+  const o = P(-1, -1, -1), ax = [P(1.25, -1, -1), P(-1, 1.25, -1), P(-1, -1, 1.25)], lab = ['RRₙ', 'RRₙ₊₁', 'RRₙ₊₂'];
+  ctx.strokeStyle = COL.muted; ctx.globalAlpha = 0.6; ctx.lineWidth = 1;
+  ax.forEach((p, i) => { ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.fillStyle = COL.muted; ctx.font = '11px "IBM Plex Mono", monospace'; ctx.fillText(lab[i], p.x + 4, p.y); });
+  ctx.globalAlpha = 1;
+  if (tr.length < 10) { emptyMsg(ctx, w, h, 'Esperando latidos válidos…'); scanlines(ctx, w, h); return; }
+  const all = tr.flat(), mean = all.reduce((s, v) => s + v, 0) / all.length;
+  const span = Math.max(60, ...all.map((v) => Math.abs(v - mean))) * 1.1;
+  // diagonal de identidad
+  const d0 = P(-1, -1, -1), d1 = P(1, 1, 1); ctx.strokeStyle = COL.holo; ctx.globalAlpha = 0.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(d0.x, d0.y); ctx.lineTo(d1.x, d1.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  const pts = tr.map(([a, b, c]) => P((a - mean) / span, (b - mean) / span, (c - mean) / span)).sort((p, q) => q.z - p.z);
+  // Color por profundidad (cerca cian → lejos violeta): se lee la forma 3D sin girar [VIVID-2026-10-23]
+  const zs = pts.map((p) => p.z), zmin = Math.min(...zs), zr = (Math.max(...zs) - zmin) || 1;
+  ctx.save(); ctx.shadowBlur = 7;
+  pts.forEach((p, i) => { const f = (p.z - zmin) / zr, col = i > pts.length - 4 ? COL.ink : depthColor(f);
+    ctx.shadowColor = col; ctx.globalAlpha = 1 - f * 0.45; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p.x, p.y, (3.2 - f * 1.4) * p.s, 0, Math.PI * 2); ctx.fill(); });
+  ctx.restore(); ctx.globalAlpha = 1;
+  scanlines(ctx, w, h);
+}
+
+// ══ 2 · Radar cuerpo–mente holográfico ══
+const radarView = makeView(0, 0.95); let radarFlat = false;
+function drawRadar(dt) {
+  const { ctx, w, h } = fitCanvas($('cv-radar'));
+  ctx.clearRect(0, 0, w, h);
+  const { today, base } = radarScores();
+  const R = Math.min(w * 0.30, h * 0.36), cx = w / 2, cy = h * 0.5;
+  let P;
+  if (radarFlat) P = (x, y, z) => ({ x: cx + x * R, y: cy + z * R, z: 0, s: 1 });
+  else { if (!radarView.drag && !reduceMotion) radarView.yaw += dt * 0.00025; P = projector(radarView, cx, cy + 20, R, 3.2); }
+  const ang = (k) => -Math.PI / 2 + k / 6 * Math.PI * 2;
+  const at = (k, v) => P(Math.cos(ang(k)) * v, 0, Math.sin(ang(k)) * v);
+  // rejilla
+  ctx.strokeStyle = '#33406A'; ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75, 1].forEach((g) => { ctx.beginPath(); for (let k = 0; k <= 6; k++) { const p = at(k % 6, g); k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); } ctx.stroke(); });
+  for (let k = 0; k < 6; k++) { const o = at(k, 0), p = at(k, 1); ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+  // haz de luz holográfico
+  if (!radarFlat) { const b = P(0, 0, 0), t = P(0, 1.1, 0); const g = ctx.createLinearGradient(b.x, b.y, t.x, t.y); g.addColorStop(0, 'rgba(0,200,255,0.28)'); g.addColorStop(1, 'rgba(0,200,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(b.x - 40, b.y); ctx.lineTo(b.x + 40, b.y); ctx.lineTo(t.x + 6, t.y); ctx.lineTo(t.x - 6, t.y); ctx.closePath(); ctx.fill(); }
+  // basal
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = COL.muted; ctx.lineWidth = 1.5; ctx.beginPath();
+  RADAR_AXES.forEach((a, k) => { const p = at(k, base[a.k]); k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }); ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+  // hoy (ejes sin dato → 0 y marca)
+  ctx.save(); ctx.shadowColor = COL.holo; ctx.shadowBlur = radarFlat ? 0 : 14;
+  ctx.beginPath(); RADAR_AXES.forEach((a, k) => { const p = at(k, today[a.k] ?? 0); k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }); ctx.closePath();
+  ctx.fillStyle = 'rgba(0,200,255,0.18)'; ctx.fill(); ctx.strokeStyle = '#7FE9FF'; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
+  RADAR_AXES.forEach((a, k) => { const v = today[a.k]; const p = at(k, v ?? 0); ctx.fillStyle = a.body ? COL.pns : COL.mind; ctx.beginPath(); ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2); ctx.fill();
+    const l = at(k, 1.16), txt = a.t + (v == null ? ' (--)' : ''); ctx.font = '600 13px "IBM Plex Sans", sans-serif'; ctx.fillStyle = a.body ? COL.pns : COL.mind;
+    const tw = ctx.measureText(txt).width, align = Math.abs(l.x - cx) < 10 ? 'center' : (l.x > cx ? 'left' : 'right');
+    const lx = align === 'left' ? Math.min(l.x, w - tw - 4) : align === 'right' ? Math.max(l.x, tw + 4) : l.x;   // nunca fuera del lienzo
+    ctx.textAlign = align; ctx.fillText(txt, lx, l.y + 4); });
+  ctx.textAlign = 'left';
+  if (!radarFlat) scanlines(ctx, w, h);
+}
+function renderRadarTable() {
+  const { today, base } = radarScores();
+  const rows = RADAR_AXES.map((a) => '<tr><td style="color:' + (a.body ? COL.pns : COL.mind) + '">' + a.t + '</td><td class="mono">' + (today[a.k] == null ? '--' : Math.round(today[a.k] * 100)) + '</td><td class="mono">' + Math.round(base[a.k] * 100) + '</td></tr>').join('');
+  $('radar-tbl').innerHTML = '<thead><tr><th>Eje</th><th>Hoy (0–100)</th><th>Basal</th></tr></thead><tbody>' + rows + '</tbody>';
+}
+
+// ══ 3 · Paisaje autonómico 3D ══
+const landView = makeView(-0.35, 0.55);
+const ZONE_COL = ['#16213F', '#123E6E', '#0F6E86', '#6E3A9C', '#A8304A'];   // reposo → máximo: frío a cálido [VIVID-2026-10-23]
+function hrZone(fc, p) { if (fc == null) return -1; const r = (fc - p.hrRest) / Math.max(1, p.hrMax - p.hrRest); return r < 0.5 ? 0 : r < 0.6 ? 1 : r < 0.7 ? 2 : r < 0.8 ? 3 : 4; }
+function drawLandscape() {
+  const { ctx, w, h } = fitCanvas($('cv-land'));
+  ctx.clearRect(0, 0, w, h);
+  const s = S.samples, p = getPatient();
+  if (s.length < 3) { emptyMsg(ctx, w, h, S.rec ? 'Construyendo el paisaje…' : 'Inicia el registro para construir el paisaje de la sesión'); scanlines(ctx, w, h); return; }
+  const P = projector(landView, w * (w < 600 ? 0.44 : 0.5), h * 0.74, Math.min(w * (w < 600 ? 0.30 : 0.22), 290), 6);
+  const T = s[s.length - 1].t || 1, X = (t) => (t / T) * 3 - 1.5, LANES = 4, Z = (k) => (k - (LANES - 1) / 2) * 0.55;
+  // suelo por zona de FC
+  for (let i = 1; i < s.length; i++) {
+    const zc = hrZone(s[i].fc, p); ctx.fillStyle = zc < 0 ? '#111832' : ZONE_COL[zc];
+    const a = P(X(s[i - 1].t), 0, Z(-0.6)), b = P(X(s[i].t), 0, Z(-0.6)), c = P(X(s[i].t), 0, Z(LANES - 0.4)), d = P(X(s[i - 1].t), 0, Z(LANES - 0.4));
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); ctx.fill();
+  }
+  const lanes = [
+    { k: 'pns', col: COL.pns, dash: [6, 4], f: (v) => v == null ? null : v / 100, name: 'Freno' },
+    { k: 'sns', col: COL.sns, dash: [], f: (v) => v == null ? null : v / 100, name: 'Acelerador' },
+    { k: 'rmssd', col: COL.hrv, dash: [2, 3], f: (v) => v == null ? null : clamp(v / 120, 0, 1), name: 'HRV' },
+    { k: 'fc', col: COL.ink, dash: [], f: (v) => v == null ? null : clamp((v - 40) / 160, 0, 1), name: 'FC' },
+  ];
+  // de atrás hacia delante según el giro
+  const order = lanes.map((L, i) => ({ L, i, z: P(0, 0, Z(i)).z })).sort((a, b) => b.z - a.z);
+  order.forEach(({ L, i }) => {
+    const z = Z(i), H = 0.8; let seg = [];
+    const flush = () => {
+      if (seg.length < 2) { seg = []; return; }
+      ctx.beginPath(); seg.forEach((q, j) => { const pt = P(X(q.t), q.v * H, z); j ? ctx.lineTo(pt.x, pt.y) : ctx.moveTo(pt.x, pt.y); });
+      for (let j = seg.length - 1; j >= 0; j--) { const pt = P(X(seg[j].t), 0, z); ctx.lineTo(pt.x, pt.y); }
+      ctx.closePath(); ctx.globalAlpha = 0.22; ctx.fillStyle = L.col; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.save(); ctx.shadowColor = L.col; ctx.shadowBlur = 10; ctx.setLineDash(L.dash); ctx.strokeStyle = L.col; ctx.lineWidth = 3;
+      ctx.beginPath(); seg.forEach((q, j) => { const pt = P(X(q.t), q.v * H, z); j ? ctx.lineTo(pt.x, pt.y) : ctx.moveTo(pt.x, pt.y); }); ctx.stroke(); ctx.restore();
+      seg = [];
+    };
+    s.forEach((q) => { const v = L.f(q[L.k]); if (v == null) flush(); else seg.push({ t: q.t, v }); }); flush();
+    const lp = P(1.55, 0.05, z); ctx.fillStyle = L.col; ctx.font = '600 13px "IBM Plex Sans", sans-serif'; ctx.fillText(L.name, lp.x + 4, lp.y);
+  });
+  const t0 = P(-1.5, 0, Z(-0.9)), t1 = P(1.5, 0, Z(-0.9)); ctx.fillStyle = COL.muted; ctx.font = '11px "IBM Plex Mono", monospace';
+  ctx.fillText('0:00', clamp(t0.x, 4, w - 40), clamp(t0.y + 12, 12, h - 4)); ctx.textAlign = 'right';
+  ctx.fillText(mmss(T), clamp(t1.x, 44, w - 4), clamp(t1.y + 12, 12, h - 4)); ctx.textAlign = 'left';
+  scanlines(ctx, w, h);
+}
+
+// ══ 4 · Tacograma (2D, lectura exacta) ══
+function drawTacho() {
+  const { ctx, w, h } = fitCanvas($('cv-rr'));
+  ctx.clearRect(0, 0, w, h);
+  if (S.rr.length < 2) { emptyMsg(ctx, w, h, 'Sin intervalos RR'); return; }
+  const now = Date.now(), lo = 300, hi = 2000, X = (t) => w - (now - t) / RR_WINDOW_MS * w, Y = (v) => h - 14 - (clamp(v, lo, hi) - lo) / (hi - lo) * (h - 24);
+  ctx.strokeStyle = COL.line; ctx.lineWidth = 1; [500, 1000, 1500].forEach((v) => { ctx.beginPath(); ctx.moveTo(0, Y(v)); ctx.lineTo(w, Y(v)); ctx.stroke(); ctx.fillStyle = COL.muted; ctx.font = '11px "IBM Plex Mono", monospace'; ctx.fillText(v + ' ms', 4, Y(v) - 3); });
+  ctx.strokeStyle = COL.ink; ctx.lineWidth = 1.5; ctx.beginPath(); let pen = false;
+  S.rr.forEach((v, i) => { const x = X(S.ts[i]), y = Y(v); if (S.flags[i] !== RR_FLAG.OK) { pen = false; return; } pen ? ctx.lineTo(x, y) : ctx.moveTo(x, y); pen = true; }); ctx.stroke();
+  S.rr.forEach((v, i) => { const x = X(S.ts[i]), y = Y(v); ctx.strokeStyle = COL.ink; ctx.lineWidth = 2;
+    if (S.flags[i] === RR_FLAG.ARTIFACT) { ctx.beginPath(); ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y + 4); ctx.moveTo(x + 4, y - 4); ctx.lineTo(x - 4, y + 4); ctx.stroke(); }
+    else if (S.flags[i] === RR_FLAG.SYNTH) { ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.stroke(); } });
+}
+
+// ══ Gráfico SNA — réplica de vo2lab initSNATemporalChart/updateSNATemporalChart [SNA-VO2LAB-2026-10-23] ══
+// Mismas series, colores, ejes y ventana (60 puntos) que la pestaña HRV & SNA de vo2lab; solo cambian los
+// colores de ejes y rejilla, adaptados al fondo oscuro de esta página. 1 punto por segundo.
+const SNA_MAX_PTS = 60;
+const SNA_HIST = { labels: [], sns: [], pns: [], hrv: [], fc: [] };
+let snaChart = null;
+function initSnaChart() {
+  if (!window.Chart) { $('sna-chart').hidden = true; $('sna-chart-msg').hidden = false; return; }
+  const tick = 'rgba(238,242,250,0.62)', grid = 'rgba(149,161,190,0.14)';
+  snaChart = new Chart($('sna-chart'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'Simpático (SNS)', data: [], borderColor: '#FF8C00', backgroundColor: 'rgba(255,140,0,0.1)', borderWidth: 2.5, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 5 },
+      { label: 'Parasimpático (PNS)', data: [], borderColor: '#00C864', backgroundColor: 'rgba(0,200,100,0.1)', borderWidth: 2.5, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 5 },
+      { label: 'HRV (RMSSD)', data: [], borderColor: '#00C8FF', backgroundColor: 'transparent', borderWidth: 2.5, borderDash: [5, 5], tension: 0.4, fill: false, pointRadius: 0, pointHoverRadius: 5 },
+      { label: 'FC (lpm)', data: [], yAxisID: 'y1', borderColor: '#E5484D', backgroundColor: 'transparent', borderWidth: 2, tension: 0.3, fill: false, pointRadius: 0, pointHoverRadius: 5, spanGaps: false },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: true, position: 'top', labels: { color: 'rgba(238,242,250,0.85)', font: { size: 11 }, usePointStyle: true, padding: 12 } }, title: { display: false } },
+      scales: {
+        x: { grid: { color: grid }, ticks: { color: tick, maxRotation: 0, font: { size: 9 }, maxTicksLimit: 8 } },
+        y: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, font: { size: 10 } }, title: { display: true, text: 'Índice / HRV norm. (0–100)', color: tick, font: { size: 9 } } },
+        y1: { position: 'right', suggestedMin: 40, suggestedMax: 180, grid: { drawOnChartArea: false }, ticks: { color: '#E5484D', font: { size: 10 } }, title: { display: true, text: 'FC (lpm)', color: '#E5484D', font: { size: 9 } } },
+      } },
+  });
+}
+function updateSnaChart() {
+  if (!snaChart || (S.src === 'none' && !S.rr.length)) return;
+  const h = SNA_HIST, m = S.metrics, ok = m.valid !== false && m.nOk != null, fc = currentHR();
+  h.labels.push(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+  h.sns.push(ok ? S.sns : null); h.pns.push(ok ? S.pns : null);            // ventana sin calidad → hueco, no el último índice
+  h.hrv.push(ok ? Math.round(clamp(m.rmssd / 100 * 100, 0, 100)) : null);
+  h.fc.push(fc != null ? Math.round(fc) : null);
+  if (h.labels.length > SNA_MAX_PTS) Object.values(h).forEach((a) => a.shift());
+  snaChart.data.labels = h.labels;
+  [h.sns, h.pns, h.hrv, h.fc].forEach((d, i) => { snaChart.data.datasets[i].data = d; });
+  if (!$('sec-mon').hidden) snaChart.update('none');
+}
+setInterval(updateSnaChart, 1000);
+
+// ══ DOM (solo en rAF) ══
+function mmss(sec) { sec = Math.max(0, Math.round(sec)); return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0'); }
+function renderDom() {
+  const m = S.metrics, fc = currentHR();
+  $('k-fc').textContent = fc != null ? Math.round(fc) : '--';
+  $('k-fc-sub').textContent = S.hrLast > 0 && Date.now() - S.hrTs <= 5000 ? 'lpm · banda' : (fc != null ? 'lpm · media RR' : 'lpm · banda, o media RR');
+  if (m.valid) {
+    $('k-hrv').textContent = Math.round(m.rmssd); $('k-sns').textContent = S.sns + '%'; $('k-pns').textContent = S.pns + '%';
+    $('k-hrv-sub').textContent = 'ln ' + Math.log(m.rmssd).toFixed(2) + ' · SDNN ' + Math.round(m.sdnn) + ' · α1 ' + fmt(S.a1, 2);
+  } else {
+    ['k-hrv', 'k-sns', 'k-pns'].forEach((id) => { $(id).textContent = '--'; });
+    $('k-hrv-sub').textContent = HRV_REASON_TXT[m.reason] || 'Sin datos';
+  }
+  // calidad
+  const q = $('txt-q'), dq = $('dot-q');
+  if (m.nArt == null) { q.textContent = 'Calidad RR: sin datos'; dq.style.background = COL.muted; }
+  else if (m.valid) { q.textContent = 'Calidad RR ' + m.artPct.toFixed(1) + ' % corregidos'; dq.style.background = COL.ok; }
+  else { q.textContent = (HRV_REASON_TXT[m.reason] || 'Sin datos') + (m.reason === 'art' ? ' · ' + m.artPct.toFixed(1) + ' %' : ''); dq.style.background = m.reason === 'few' ? COL.muted : COL.warn; }
+  // fuente
+  const srcTxt = { none: 'Sin banda de FC', beat: (S.device?.name || 'Banda') + ' · RR reales', synth: (S.device?.name || 'Banda') + ' · solo FC (sin RR)', demo: 'Demostración · datos de ejemplo' }[S.src] || 'Sin banda de FC';
+  $('txt-src').textContent = srcTxt; $('dot-src').style.background = S.src === 'beat' ? COL.ok : S.src === 'none' ? COL.muted : COL.warn;
+  $('btn-connect').textContent = S.device ? 'Desconectar banda' : 'Conectar banda FC';
+  $('btn-demo').textContent = S.demoTimer ? 'Detener demostración' : 'Modo demostración';
+  $('btn-rec').textContent = S.rec ? 'Detener registro' : 'Iniciar registro';
+  $('btn-rec').classList.toggle('primary', S.rec);
+  $('chip-time').textContent = S.rec ? 'REG ' + mmss((Date.now() - S.t0) / 1000) : mmss(S.samples.length ? S.samples[S.samples.length - 1].t : 0);
+  $('rr-count').textContent = S.rr.length + ' RR en 120 s';
+  const tr = poincareTriplets(), sd = poincareSD(tr);
+  $('pc-sd').textContent = sd ? 'SD1 ' + Math.round(sd.sd1) + ' · SD2 ' + Math.round(sd.sd2) + ' ms' : 'SD1 -- · SD2 -- ms';
+  $('pc-n').textContent = tr.length + ' tríos válidos';
+  $('land-note').textContent = S.samples.length ? 'Sesión: ' + mmss(S.samples[S.samples.length - 1].t) + ' · ' + S.samples.length + ' muestras. Para valores exactos, usa la tabla del informe.' : 'Inicia el registro para construir el paisaje de la sesión (1 muestra por segundo). Para leer valores exactos, usa la tabla del informe.';
+  renderRadarTable();
+}
+let _lastFrame = performance.now(), _lastDom = 0;
+function frame(now) {
+  const dt = now - _lastFrame; _lastFrame = now;
+  if (!$('sec-mon').hidden) {
+    drawPoincare(dt); drawRadar(dt);
+    if (S.dirty || landView.drag) drawLandscape();
+    drawTacho();
+    if (S.dirty || now - _lastDom > 1000) { renderDom(); _lastDom = now; }
+  }
+  S.dirty = false;
+  requestAnimationFrame(frame);
+}
+
+// ══ FR estimada desde la HRV (ASR) ══
+// Sin sensor de flujo en esta página: la FR se estima por los ciclos de la arritmia sinusal
+// respiratoria en los últimos 60 s (RR válidos, sin tendencia; cruces ascendentes por cero).
+// Es una estimación: con FR < 9 o RR irregulares falla. null = sin dato.
+const FR_EST_WIN_MS = 60000;
+function estimateFR() {
+  const now = Date.now(), x = [], t = [];
+  S.rr.forEach((v, i) => { if (S.flags[i] === RR_FLAG.OK && now - S.ts[i] <= FR_EST_WIN_MS) { x.push(v); t.push(S.ts[i]); } });
+  if (x.length < 20) return null;
+  const k = 3, d = x.map((v, i) => v - x.slice(Math.max(0, i - k), i + k + 1).reduce((a, b) => a + b, 0) / (Math.min(x.length, i + k + 1) - Math.max(0, i - k)));
+  let ups = 0; for (let i = 1; i < d.length; i++) if (d[i - 1] < 0 && d[i] >= 0) ups++;
+  const durMin = x.reduce((a, b) => a + b, 0) / 60000;
+  const fr = durMin > 0.2 ? ups / durMin : null;
+  return fr != null && fr >= 4 && fr <= 45 ? fr : null;
+}
+
+// ══ Gemelo fisiológico holográfico [TWIN-2026-10-23] ══
+// Adaptado de la propuesta «Gemelo fisiológico holográfico» del lienzo de diseño. Diferencia: el
+// modelo ya no es una prueba simulada; lo mueven las lecturas en vivo (FC, freno/acelerador, α1,
+// FR estimada, ansiedad del autoinforme). Sin gases en esta página: zonas estimadas por α1.
+const TW = { inited: false, err: null, focus: 'body', spin: !reduceMotion, ecg: [], anch: null, raf: 0, mainR: null, stripDirty: true,
+  style: store.get('twinStyle', 'atlas'), setStyle: () => {} };   // 'atlas' (por defecto, legible) | 'holo'
+const TWIN_IDLE_HR = 62;
+function twinLive() {
+  const fc = currentHR(), m = S.metrics, p = getPatient();
+  const hr = fc || TWIN_IDLE_HR;
+  const pN = m.valid && S.pns != null ? S.pns / 100 : 0.5, sN = m.valid && S.sns != null ? S.sns / 100 : 0.5;
+  const fr = estimateFR();
+  const anx = (safeN($('m-som').value, 4) + safeN($('m-cog').value, 4)) / 2;
+  return { hr, hasHr: fc != null, pN, sN, valid: !!m.valid, fr, a1: S.a1, anx, zone: twinZone(fc, S.a1, p), RR: 60 / hr, QT: Math.min(0.45, 0.40 * Math.sqrt(60 / hr)) };
+}
+// 0 = reposo · 1/2/3 ≈ zonas por α1 (0.75 / 0.50), solo si la reserva de FC usada supera el 30 %
+function twinZone(fc, a1, p) {
+  if (fc == null) return 0;
+  const hrr = (fc - p.hrRest) / Math.max(1, p.hrMax - p.hrRest);
+  if (hrr < 0.3) return 0;
+  if (a1 == null) return hrr < 0.6 ? 1 : hrr < 0.8 ? 2 : 3;
+  return a1 > 0.75 ? 1 : a1 > 0.5 ? 2 : 3;
+}
+function twinCycle(t, mv) {
+  const g = (x, mu, sd) => Math.exp(-Math.pow((x - mu) / sd, 2) / 2);
+  const aS = t < 0.1 ? Math.sin(Math.PI * t / 0.1) : 0;
+  const vu = (t - 0.16) / mv.QT, vS = (vu > 0 && vu < 1) ? Math.pow(Math.sin(Math.PI * vu), 0.8) : 0;
+  const ecg = 0.12 * g(t, 0.05, 0.022) - 0.12 * g(t, 0.15, 0.007) + 1.0 * g(t, 0.165, 0.009) - 0.22 * g(t, 0.18, 0.009) + 0.28 * g(t, 0.16 + mv.QT - 0.11, 0.04);
+  return { aS, vS, ecg };
+}
+function twinInit() {
+  if (TW.inited) return;
+  TW.inited = true;
+  const T = window.THREE;
+  if (!T || !T.EffectComposer || !T.OrbitControls) { twinMsg('No se pudo cargar el visor 3D (falta holo/three-r147-bundle.js).'); return; }
+  const cvM = $('tw-main'), cvB = $('tw-brain'), cvS = $('tw-strip');
+  // [TWIN-1CTX-2026-10-23] UN solo contexto WebGL (antes 3: cuerpo, cerebro y tira). Cada recarga de
+  // Live Server abría 3 contextos; tras varias pérdidas Chrome bloquea WebGL en el sitio y el gemelo
+  // mostraba «sin WebGL». El cerebro y la tira se dibujan con el mismo renderer y se copian a lienzos 2D.
+  // [TWIN-2D-2026-10-23] Sin WebGL (GPU apagada por el navegador) el gemelo NO se apaga: pasa al motor 2D.
+  const diag = webglDiag();
+  if (!diag.ok) { twinInit2D(diag.why); return; }
+  let r1;
+  // [TWIN-GPU-2026-10-23] GPU dedicada (NVIDIA en portátiles Optimus, en vez de la Intel con controlador
+  // antiguo) y densidad ≤ 1.5: menos carga = menos fallos del proceso de GPU, que es lo que lleva a
+  // Chrome a apagarla para toda la sesión.
+  try { r1 = new T.WebGLRenderer({ canvas: cvM, antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' }); r1.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); }
+  catch (e) { twinInit2D(e && e.message); return; }
+  TW.mainR = r1;
+  cvM.addEventListener('webglcontextlost', (e) => { e.preventDefault(); TW.lost = true; twinInit2D('se perdió el contexto WebGL durante la sesión'); });
+  const ctxB = cvB.getContext('2d'), ctxS = cvS.getContext('2d');
+  const scene = new T.Scene(); scene.background = new T.Color(0x070B18);
+  const cam = new T.PerspectiveCamera(28, 1000 / 620, 0.005, 20); cam.position.set(0.55, 0.62, 2.45);
+  const ctl = new T.OrbitControls(cam, cvM); ctl.target.set(0, 0.5, 0); ctl.enableDamping = true; ctl.enablePan = false; ctl.minDistance = 0.2; ctl.maxDistance = 4; ctl.autoRotateSpeed = 1.4; ctl.update();
+  const comp = new T.EffectComposer(r1); comp.addPass(new T.RenderPass(scene, cam)); const bloom = new T.UnrealBloomPass(new T.Vector2(1000, 620), 0.85, 0.55, 0.08); comp.addPass(bloom);
+  const camB = new T.PerspectiveCamera(30, 1, 0.005, 5); camB.position.set(0.2, 0.975, 0.32);
+  const ctlB = new T.OrbitControls(camB, cvB); ctlB.target.set(0, 0.943, 0.035); ctlB.enablePan = false; ctlB.enableDamping = true; ctlB.minDistance = 0.1; ctlB.maxDistance = 0.6; ctlB.autoRotateSpeed = 2; ctlB.update();
+  const camS = new T.PerspectiveCamera(26, 250 / 320, 0.01, 20);
+  const V = { mw: 1000, mh: 620 };
+  const size2d = (cv) => { const pr = Math.min(window.devicePixelRatio || 1, 2), w = Math.round((cv.clientWidth || 1) * pr), h = Math.round((cv.clientHeight || 1) * pr); if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } };
+  const fit = () => {
+    V.mw = cvM.clientWidth || 1000; V.mh = cvM.clientHeight || 620; r1.setSize(V.mw, V.mh, false); comp.setSize(V.mw, V.mh); cam.aspect = V.mw / V.mh; cam.updateProjectionMatrix();
+    size2d(cvB); size2d(cvS); TW.stripDirty = true;
+  };
+  fit(); if (window.ResizeObserver) { const ro = new ResizeObserver(fit); [cvM, cvB, cvS].forEach((c) => ro.observe(c)); }
+  // Dibuja una cámara en la esquina inferior izquierda del lienzo WebGL (w×h CSS) y la copia a un 2D.
+  const blit = (camera, w, h, ctx, dx, dy, dw, dh) => {
+    const pr = r1.getPixelRatio(); w = Math.max(1, Math.floor(w)); h = Math.max(1, Math.floor(h));
+    r1.setScissorTest(true); r1.setViewport(0, 0, w, h); r1.setScissor(0, 0, w, h); r1.render(scene, camera);
+    ctx.drawImage(r1.domElement, 0, r1.domElement.height - h * pr, w * pr, h * pr, dx, dy, dw, dh);
+    r1.setScissorTest(false); r1.setViewport(0, 0, V.mw, V.mh);
+  };
+  const gc = document.createElement('canvas'); gc.width = gc.height = 128;
+  const gx = gc.getContext('2d'), gr = gx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); gx.fillStyle = gr; gx.fillRect(0, 0, 128, 128);
+  const glowTex = new T.CanvasTexture(gc);
+  const halo = (hex) => new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hex, transparent: true, blending: T.AdditiveBlending, depthWrite: false }));
+  const flat = (hex, op) => new T.MeshBasicMaterial({ color: hex, transparent: true, opacity: op, blending: T.AdditiveBlending, depthWrite: false });
+  const VS = 'varying vec3 vN; varying vec3 vP; varying vec3 vV; void main(){ vec4 wp = modelMatrix * vec4(position, 1.0); vP = wp.xyz; vec4 mv = viewMatrix * wp; vV = -mv.xyz; vN = normalMatrix * normal; gl_Position = projectionMatrix * mv; }';
+  const bodyMat = new T.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uBase: { value: new T.Color(0xA9B8E0) }, uLeg: { value: new T.Color(0x5A6A9A) }, uLegMix: { value: 0 }, uAtlas: { value: 0 } }, vertexShader: VS,
+    fragmentShader: 'uniform float uTime; uniform vec3 uBase; uniform vec3 uLeg; uniform float uLegMix; uniform float uAtlas; varying vec3 vN; varying vec3 vP; varying vec3 vV;' +
+      'void main(){ vec3 n = normalize(vN); vec3 v = normalize(vV); float fr = pow(1.0 - abs(dot(n, v)), 2.4);' +
+      ' float leg = (1.0 - smoothstep(0.455, 0.48, vP.y)) * (1.0 - step(0.16, abs(vP.x)));' +
+      ' vec3 col = mix(uBase, uLeg, leg * uLegMix);' +
+      ' if (uAtlas > 0.5) { float aa = 0.02 + fr * 0.30 + leg * uLegMix * 0.10; gl_FragColor = vec4(col, aa); return; }' +
+      ' float scan = 0.62 + 0.38 * step(0.5, fract(vP.y * 150.0 - uTime * 0.5));' +
+      ' float sweep = 1.0 - smoothstep(0.0, 0.025, abs(vP.y - fract(uTime * 0.11) * 1.1));' +
+      ' float a = (0.02 + fr * 0.6) * scan + sweep * 0.22 + leg * uLegMix * 0.12;' +
+      ' gl_FragColor = vec4(col * a, a); }',
+    transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide });
+  const mats = [];
+  // [VIVID-2026-10-23] alphaAtlas = opacidad en estilo Atlas (>= 0.95: órgano sólido, escribe profundidad)
+  const om = (hex, base, dashed, alphaAtlas) => { const m = new T.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uColor: { value: new T.Color(hex) }, uI: { value: 1 }, uBase: { value: base }, uDash: { value: dashed ? 1 : 0 }, uAtlas: { value: 0 }, uAlpha: { value: alphaAtlas ?? 1 } }, vertexShader: VS,
+    fragmentShader: 'uniform float uTime; uniform vec3 uColor; uniform float uI; uniform float uBase; uniform float uDash; uniform float uAtlas; uniform float uAlpha; varying vec3 vN; varying vec3 vP; varying vec3 vV;' +
+      'void main(){ vec3 n = normalize(vN); vec3 v = normalize(vV); if (dot(n, v) < 0.0) n = -n; float fr = pow(1.0 - abs(dot(n, v)), 1.8);' +
+      ' if (uAtlas > 0.5) {' +
+      '  vec3 L1 = normalize(vec3(0.35, 0.6, 0.75)); vec3 L2 = normalize(vec3(-0.6, 0.15, 0.4));' +
+      '  float d1 = max(dot(n, L1), 0.0); float d2 = max(dot(n, L2), 0.0); float sp = pow(max(dot(n, normalize(L1 + v)), 0.0), 36.0);' +
+      '  float g = clamp(uI, 0.0, 2.0);' +
+      '  vec3 col = uColor * (0.30 + 0.62 * d1 + 0.22 * d2) + vec3(sp * 0.5) + uColor * fr * (0.2 + 0.4 * g);' +
+      '  col *= 0.72 + 0.3 * g;' +
+      '  if (uDash > 0.5) { float dd = fract(vP.y * 140.0 + uTime * 1.8); col += uColor * 0.55 * step(0.6, dd) * g; }' +
+      '  gl_FragColor = vec4(col, clamp(uAlpha + fr * 0.2, 0.0, 1.0)); return; }' +
+      ' float a = (uBase + fr * 0.9) * uI;' +
+      ' if (uDash > 0.5) { float d = fract(vP.y * 140.0 + uTime * 1.8); a *= 0.2 + 0.8 * step(0.45, d); }' +
+      ' gl_FragColor = vec4(uColor * a, a); }',
+    transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide }); mats.push(m); return m; };
+  [[0.3, 0.45], [0.21, 0.3], [0.12, 0.2]].forEach(([r, op]) => { const g = new T.Mesh(new T.RingGeometry(r, r + 0.004, 128), flat(0x00C864, op)); g.rotation.x = -Math.PI / 2; scene.add(g); });
+  const zoneDisc = new T.Mesh(new T.CircleGeometry(1, 64), flat(0x5A6A9A, 0.16)); zoneDisc.rotation.x = -Math.PI / 2; zoneDisc.position.y = -0.001; scene.add(zoneDisc);
+  const legColors = [0x6B7699, 0x5A6A9A, 0x9AA8D6, 0xE4E9FA];
+  const TEAL = new T.Color(0x00C864), PINK = new T.Color(0xFF8C00);
+  const R = {}; const heartHalo = halo(0xFF4D5E); scene.add(heartHalo);
+  const geo = (pos, idx, sc) => { const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(Float32Array.from(pos, (x) => x / sc), 3)); g.setIndex(idx); g.computeVertexNormals(); return g; };
+  loadTwinModels().then(([body, A]) => {
+    if (TW.lost) return;
+    const skin = new T.Mesh(geo(body.pos, body.idx, body.scale), bodyMat); skin.renderOrder = 10; scene.add(skin);   // la piel se dibuja al final
+    const byGroup = {}; A.parts.forEach((p) => { (byGroup[p.group] = byGroup[p.group] || []).push(p); });
+    const centered = (parts, mat) => { const grp = new T.Group(), box = new T.Box3();
+      const gs = parts.map((p) => { const g = geo(p.pos, p.idx, A.scale); g.computeBoundingBox(); box.union(g.boundingBox); return g; });
+      const c = box.getCenter(new T.Vector3()); gs.forEach((g) => { g.translate(-c.x, -c.y, -c.z); grp.add(new T.Mesh(g, mat)); }); grp.position.copy(c); scene.add(grp); return grp; };
+    R.heartMatA = om(0xFF5C6E, 0.05, false, 1); R.heartMatV = om(0xE01E37, 0.05, false, 1);   // aurículas más claras que ventrículos
+    R.LA = centered(byGroup.heart_LA, R.heartMatA); R.RA = centered(byGroup.heart_RA, R.heartMatA);
+    R.LV = centered(byGroup.heart_LV, R.heartMatV); R.RV = centered(byGroup.heart_RV, R.heartMatV);
+    centered(byGroup.heart_PT, om(0x3D7BFF, 0.04, false, 1));   // tronco pulmonar: sangre venosa
+    const hb = new T.Box3(); [R.LA, R.RA, R.LV, R.RV].forEach((g) => hb.expandByObject(g)); R.heartC = hb.getCenter(new T.Vector3()); heartHalo.position.copy(R.heartC);
+    const lungMat = om(0xFF8FB1, 0.03, false, 0.4); R.lungL = centered(byGroup.lung_L, lungMat); R.lungR = centered(byGroup.lung_R, lungMat);
+    R.symMat = om(0xFF8C00, 0.08, false, 1); centered(byGroup.symp_ganglia, R.symMat);
+    R.brain = { shell: centered(byGroup.brain_shell, om(0xF2B5C4, 0.01, false, 0.16)), freno: om(0x00E676, 0.1, false, 1), mente: om(0xB388FF, 0.1, false, 1), amig: om(0xFF8C00, 0.1, false, 1), hipo: om(0xFF8C00, 0.1, false, 1), pag: om(0xFF8C00, 0.1, false, 1), bulbo: om(0x00C864, 0.12, false, 1) };
+    R.brain.shell.children.forEach((c) => { c.material.uniforms.uI.value = 0.45; c.renderOrder = 5; });
+    TW.setStyle(TW.style);   // aplica el estilo elegido a los materiales recién creados
+    centered(byGroup.brain_freno, R.brain.freno); R.mente = centered(byGroup.brain_mente, R.brain.mente);
+    centered(byGroup.brain_acel_amig, R.brain.amig); centered(byGroup.brain_acel_hipo, R.brain.hipo); centered(byGroup.brain_acel_pag, R.brain.pag); centered(byGroup.brain_bulbo, R.brain.bulbo);
+    R.vagMat = om(0x00C864, 0.25, true, 1); R.sympMat = om(0xFF8C00, 0.25, false, 1); const artMat = om(0xE63946, 0.04, false, 1), venMat = om(0x3A86FF, 0.04, false, 1);
+    R.vagPts = []; R.sympPts = [];
+    A.lines.forEach((l) => {
+      const pts = []; for (let i = 0; i < l.pts.length; i += 3) pts.push(new T.Vector3(l.pts[i] / A.scale, l.pts[i + 1] / A.scale, l.pts[i + 2] / A.scale));
+      const curve = pts.length > 2 ? new T.CatmullRomCurve3(pts) : new T.LineCurve3(pts[0], pts[1]);
+      const rad = l.group === 'vessel' ? (l.name.indexOf('vena') >= 0 ? 0.005 : 0.0062) : 0.0017;
+      const mat = l.group === 'vagus' ? R.vagMat : l.group === 'symp' ? R.sympMat : (l.name.indexOf('vena') >= 0 ? venMat : artMat);
+      scene.add(new T.Mesh(new T.TubeGeometry(curve, Math.max(8, pts.length * 6), rad, 8, false), mat));
+      if (l.group === 'vagus') R.vagPts.push(...pts); if (l.group === 'symp') R.sympPts.push(...pts);
+    });
+    const nearY = (arr, y) => arr.reduce((b, p) => (Math.abs(p.y - y) < Math.abs(b.y - y) ? p : b), arr[0]);
+    R.vagA = nearY(R.vagPts, 0.83).clone(); R.sympA = nearY(R.sympPts, 0.78).clone();
+    R.ok = true; twinMsg(''); TW.stripDirty = true;
+  }).catch(() => twinMsg(TWIN_LOAD_ERR));
+  const apply = (mv, cy, clk) => {
+    mats.forEach((m) => { m.uniforms.uTime.value = clk; }); bodyMat.uniforms.uTime.value = clk;
+    bodyMat.uniforms.uLeg.value.setHex(legColors[mv.zone]); bodyMat.uniforms.uLegMix.value = mv.zone ? 1 : 0;
+    zoneDisc.material.color.setHex(legColors[mv.zone]); const zr = 0.14 + mv.zone * 0.06; zoneDisc.scale.set(zr, zr, 1);
+    if (!R.ok) return;
+    const sa = 1 - 0.1 * cy.aS + 0.04 * cy.vS, sv = 1 - 0.13 * cy.vS;
+    R.LA.scale.setScalar(sa); R.RA.scale.setScalar(sa); R.LV.scale.setScalar(sv); R.RV.scale.setScalar(sv);
+    R.heartMatA.uniforms.uI.value = 0.75 + cy.aS * 0.9; R.heartMatV.uniforms.uI.value = 0.75 + cy.vS * 1.1;
+    const hs = 0.11 + (mv.hr - 60) / 120 * 0.08 + cy.vS * 0.05; heartHalo.scale.set(hs, hs, 1); heartHalo.material.opacity = 0.18 + cy.vS * 0.35;
+    const br = Math.sin(2 * Math.PI * clk * (mv.fr || 12) / 60), ls = 1 + 0.06 * br;
+    R.lungL.scale.set(ls, 1 + 0.08 * br, ls); R.lungR.scale.set(ls, 1 + 0.08 * br, ls);
+    R.vagMat.uniforms.uI.value = 0.15 + mv.pN * 1.4; R.sympMat.uniforms.uI.value = 0.15 + mv.sN * 1.4; R.symMat.uniforms.uI.value = 0.2 + mv.sN * 1.2;
+    const a = mv.anx / 10, B = R.brain;
+    B.freno.uniforms.uI.value = 0.1 + mv.pN * 1.5; B.mente.uniforms.uI.value = 0.1 + a * 1.5;
+    B.amig.uniforms.uI.value = 0.1 + Math.max(mv.sN, a) * 1.6; B.hipo.uniforms.uI.value = 0.1 + mv.sN * 1.6; B.pag.uniforms.uI.value = 0.1 + mv.sN * 1.4;
+    const w = mv.sN / (mv.sN + mv.pN + 1e-6); B.bulbo.uniforms.uColor.value.copy(TEAL).lerp(PINK, w); B.bulbo.uniforms.uI.value = 0.2 + Math.max(mv.sN, mv.pN) * 1.3;
+  };
+  // [VIVID-2026-10-23] Estilo Atlas (órganos opacos con luz, colores anatómicos) u Holograma (aditivo)
+  TW.setStyle = (style) => {
+    const atlas = style !== 'holo';
+    mats.concat([bodyMat]).forEach((m) => {
+      m.uniforms.uAtlas.value = atlas ? 1 : 0;
+      m.blending = atlas ? T.NormalBlending : T.AdditiveBlending;
+      m.depthWrite = atlas && m !== bodyMat && (m.uniforms.uAlpha ? m.uniforms.uAlpha.value >= 0.95 : false);
+      m.needsUpdate = true;
+    });
+    bodyMat.uniforms.uBase.value.setHex(atlas ? 0x7FA6FF : 0xA9B8E0);
+    bloom.strength = atlas ? 0.32 : 0.85; bloom.radius = atlas ? 0.4 : 0.55; bloom.threshold = atlas ? 0.72 : 0.08;
+    heartHalo.visible = !atlas; TW.stripDirty = true;
+  };
+  TW.setStyle(TW.style);
+  const clock = new T.Clock(); let frame = 0, bt = 0, lastFocus = 'body', focusT = 0;
+  const FOCUS = { body: [new T.Vector3(0, 0.5, 0), 2.5], brain: [new T.Vector3(0, 0.943, 0.035), 0.42], heart: [new T.Vector3(0.012, 0.75, 0.02), 0.5] };
+  const loop = () => {
+    if (TW.lost) return;                                    // el motor 2D tomó el relevo
+    TW.raf = requestAnimationFrame(loop);
+    if ($('sec-twin').hidden) return;                       // solo se dibuja con la pestaña visible
+    const dt = Math.min(clock.getDelta(), 0.1), clk = clock.elapsedTime;
+    const mv = twinLive();
+    bt += dt; if (bt >= mv.RR) bt %= mv.RR;
+    const cy = twinCycle(bt, mv);
+    TW.ecg.push([clk, cy.ecg]); while (TW.ecg.length && clk - TW.ecg[0][0] > 3) TW.ecg.shift();
+    if (TW.focus !== lastFocus) { lastFocus = TW.focus; focusT = 60; }
+    if (focusT > 0) { const f = FOCUS[TW.focus] || FOCUS.body; ctl.target.lerp(f[0], 0.12); const off = cam.position.clone().sub(ctl.target); off.setLength(off.length() + (f[1] - off.length()) * 0.12); cam.position.copy(ctl.target).add(off); focusT--; }
+    if (TW.lost) return;
+    ctl.autoRotate = TW.spin; ctl.update(); ctlB.autoRotate = TW.spin; ctlB.update();
+    // 1 · Tira de 4 momentos (cada 2 s o al cambiar el registro): cada figura con su propio estado
+    if (R.ok && (TW.stripDirty || frame % 120 === 0)) {
+      const mom = twinMoments(), pw = cvS.width / 4, ph = cvS.height, pr = r1.getPixelRatio();
+      const f = Math.min(1, V.mw / (pw / pr), V.mh / (ph / pr)), w = pw / pr * f, h = ph / pr * f;
+      camS.aspect = w / h; camS.updateProjectionMatrix(); camS.position.set(Math.sin(0.5) * 2.7, 0.6, Math.cos(0.5) * 2.7); camS.lookAt(0, 0.5, 0);
+      ctxS.fillStyle = '#070B18'; ctxS.fillRect(0, 0, cvS.width, cvS.height);
+      mom.forEach((q, k) => { apply(q.mv, { aS: 0, vS: 0.4 }, clk); blit(camS, w, h, ctxS, k * pw, 0, pw, ph); });
+      twinStripCaptions(mom); TW.stripDirty = false;
+    }
+    // 2 · Estado en vivo, cerebro (sin bloom, copiado a su lienzo) y cuerpo con bloom
+    apply(mv, cy, clk);
+    if (R.ok) {
+      const s = Math.min(V.mw, V.mh, cvB.clientWidth || 1); camB.aspect = 1; camB.updateProjectionMatrix();
+      blit(camB, s, s, ctxB, 0, 0, cvB.width, cvB.height);
+    }
+    comp.render();
+    if (frame % 6 === 0 && R.ok) {
+      const ps = [R.heartC, R.mente.position, R.lungR.position, new T.Vector3(0.06, 0.32, 0.03), R.vagA, R.sympA];
+      TW.anch = ps.map((a) => { const q = a.clone().project(cam); return [(q.x + 1) / 2 * 1000, (1 - q.y) / 2 * 620]; });
+    }
+    if (frame % 4 === 0) twinHud(mv);
+    frame++;
+  };
+  loop();
+}
+function twinMsg(t) { const el = $('tw-msg'); el.textContent = t; el.hidden = !t; }
+// Diagnóstico WebGL previo: distingue «el navegador no entrega WebGL» de un fallo de three.js
+function webglDiag() {
+  const c = document.createElement('canvas'); let why = '';
+  c.addEventListener('webglcontextcreationerror', (e) => { why = e.statusMessage || why; });
+  let gl = null;
+  const opt = { powerPreference: 'high-performance' };   // en portátiles con dos GPU pide la dedicada
+  try { gl = c.getContext('webgl2', opt) || c.getContext('webgl', opt); } catch (e) { why = e.message; }
+  if (!gl) return { ok: false, why: why || 'getContext devolvió null' };
+  const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  const renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+  const lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext();   // libera la sonda: no ocupa un contexto
+  return { ok: true, renderer };
+}
+const TWIN_LOAD_ERR = 'No se pudo cargar el modelo anatómico (holo/*.json). Abre la página con Live Server (http://127.0.0.1…), no como archivo.';
+let _twinModels = null;
+function loadTwinModels() {
+  if (!_twinModels) _twinModels = Promise.all([fetch('holo/body_hm08.json').then((r) => r.json()), fetch('holo/anatomy_twin.json').then((r) => r.json())]);
+  return _twinModels;
+}
+
+// ══ Motor 2D sin GPU del gemelo [TWIN-2D-2026-10-23] ══
+// Respaldo cuando el navegador no entrega WebGL: los mismos modelos anatómicos como holograma de
+// puntos en Canvas 2D (proyección en perspectiva propia). Mismas señales que el modo WebGL; menos
+// detalle (vértices submuestreados) y sin bloom.
+const T2 = { on: false, G: null, L: null, ready: false, gen: 0 };
+// Vuelta automática a la GPU: en modo 2D se sondea WebGL cada 15 s (y con el botón). Si el navegador
+// la devuelve (p. ej. tras activar la aceleración o reiniciarlo), el gemelo pasa solo al modo completo
+// sin recargar la página, así que la sesión registrada no se pierde.
+const TWIN_GPU_RETRY_MS = 15000;
+function twinRetryGpu(manual) {
+  if (!T2.on) return true;
+  const d = webglDiag();
+  if (!d.ok) { if (manual) toast('La GPU sigue desactivada en el navegador: ' + (d.why || '').slice(0, 90)); return false; }
+  T2.gen++; T2.on = false; TW.lost = false; TW.mode2d = false; TW.inited = false; TW.mainR = null;
+  const old = $('tw-main'), cv = old.cloneNode(false); old.replaceWith(cv);
+  $('tw-mode').hidden = true; $('tw-2d-help').hidden = true;
+  twinMsg('GPU disponible: cargando el modo completo…'); twinInit(); TW.stripDirty = true;
+  toast('GPU disponible: gemelo en modo completo' + (d.renderer ? ' (' + d.renderer.slice(0, 60) + ')' : ''));
+  return true;
+}
+setInterval(() => { if (T2.on && !document.hidden && !$('sec-twin').hidden) twinRetryGpu(false); }, TWIN_GPU_RETRY_MS);
+const T2_CAP = { body: 9000, heart_LA: 1600, heart_RA: 1600, heart_LV: 1800, heart_RV: 1800, heart_PT: 400, lung_L: 2600, lung_R: 2600, symp_ganglia: 600,
+  brain_shell: 6000, brain_freno: 2600, brain_mente: 2600, brain_acel_amig: 1200, brain_acel_hipo: 900, brain_acel_pag: 1600, brain_bulbo: 1200 };
+function t2Cloud(posArrays, sc, cap) {
+  const n = posArrays.reduce((s, p) => s + p.length / 3, 0), step = Math.max(1, Math.ceil(n / cap));
+  const out = []; let k = 0;
+  posArrays.forEach((pos) => { for (let i = 0; i < pos.length; i += 3, k++) if (k % step === 0) out.push(pos[i] / sc, pos[i + 1] / sc, pos[i + 2] / sc); });
+  const P = Float32Array.from(out); let lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+  for (let i = 0; i < P.length; i += 3) for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], P[i + a]); hi[a] = Math.max(hi[a], P[i + a]); }
+  return { P, c: [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2] };
+}
+function t2Build(body, A) {
+  const G = {};
+  const b = t2Cloud([body.pos], body.scale, T2_CAP.body), leg = [], rest = [];
+  for (let i = 0; i < b.P.length; i += 3) { const x = b.P[i], y = b.P[i + 1]; ((y < 0.465 && Math.abs(x) < 0.16) ? leg : rest).push(b.P[i], y, b.P[i + 2]); }
+  G.body = { P: Float32Array.from(rest), c: b.c }; G.legs = { P: Float32Array.from(leg), c: b.c };
+  const by = {}; A.parts.forEach((p) => { (by[p.group] = by[p.group] || []).push(p.pos); });
+  Object.keys(T2_CAP).forEach((g) => { if (g !== 'body' && by[g]) G[g] = t2Cloud(by[g], A.scale, T2_CAP[g]); });
+  const L = A.lines.map((l) => { const pts = []; for (let i = 0; i < l.pts.length; i += 3) pts.push([l.pts[i] / A.scale, l.pts[i + 1] / A.scale, l.pts[i + 2] / A.scale]); return { g: l.group, vena: l.name.indexOf('vena') >= 0, pts }; });
+  const heart = ['heart_LA', 'heart_RA', 'heart_LV', 'heart_RV'].map((k) => G[k].c);
+  G.heartC = [0, 1, 2].map((a) => heart.reduce((s, c) => s + c[a], 0) / 4);
+  const near = (g, y) => L.filter((l) => l.g === g).flatMap((l) => l.pts).reduce((bp, p) => (Math.abs(p[1] - y) < Math.abs(bp[1] - y) ? p : bp), [0, 99, 0]);
+  G.vagA = near('vagus', 0.83); G.sympA = near('symp', 0.78);
+  return { G, L };
+}
+// Cámara orbital: objetivo, distancia, azimut y elevación
+function t2Cam(target, dist, yaw, pitch, fov) { return { t: target.slice(), d: dist, yaw, pitch, fov, d0: dist, t0: target.slice(), yaw0: yaw, pitch0: pitch }; }
+function t2View(c, w, h) {
+  const cp = Math.cos(c.pitch), e = [c.t[0] + c.d * cp * Math.sin(c.yaw), c.t[1] + c.d * Math.sin(c.pitch), c.t[2] + c.d * cp * Math.cos(c.yaw)];
+  let f = [c.t[0] - e[0], c.t[1] - e[1], c.t[2] - e[2]]; const fl = Math.hypot(...f); f = f.map((v) => v / fl);
+  let r = [-f[2], 0, f[0]]; const rl = Math.hypot(...r) || 1; r = r.map((v) => v / rl);   // r = f × (0,1,0)
+  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  return { e, f, r, u, F: (h / 2) / Math.tan(c.fov * Math.PI / 360), cx: w / 2, cy: h / 2 };
+}
+function t2Proj(V, x, y, z) {
+  const dx = x - V.e[0], dy = y - V.e[1], dz = z - V.e[2], zc = dx * V.f[0] + dy * V.f[1] + dz * V.f[2];
+  if (zc < 0.01) return null;
+  return [V.cx + (dx * V.r[0] + dy * V.r[1] + dz * V.r[2]) / zc * V.F, V.cy - (dx * V.u[0] + dy * V.u[1] + dz * V.u[2]) / zc * V.F, zc];
+}
+const ZONE_HEX = ['#6B7699', '#5A6A9A', '#9AA8D6', '#E4E9FA'];
+function t2Mix(a, b, w) { const p = (h) => [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16)); const A = p(a), B = p(b); return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * w)).join(',') + ')'; }
+// Estado visual de cada grupo a partir de las lecturas (mismas reglas que el modo WebGL)
+function t2Looks(mv, cy, clk) {
+  const a = mv.anx / 10, br = Math.sin(2 * Math.PI * clk * (mv.fr || 12) / 60), w = mv.sN / (mv.sN + mv.pN + 1e-6);
+  const sa = 1 - 0.1 * cy.aS + 0.04 * cy.vS, sv = 1 - 0.13 * cy.vS, lung = [1 + 0.06 * br, 1 + 0.08 * br, 1 + 0.06 * br];
+  if (TW.style !== 'holo') return {   // [VIVID-2026-10-23] estilo Atlas: colores anatómicos, mezcla normal
+    body: { col: '#7FA6FF', a: 0.07 }, legs: { col: mv.zone ? ZONE_HEX[mv.zone] : '#7FA6FF', a: mv.zone ? 0.2 : 0.07 },
+    heart_LA: { col: '#FF5C6E', a: 0.55 + cy.aS * 0.35, s: [sa, sa, sa] }, heart_RA: { col: '#FF5C6E', a: 0.55 + cy.aS * 0.35, s: [sa, sa, sa] },
+    heart_LV: { col: '#E01E37', a: 0.6 + cy.vS * 0.35, s: [sv, sv, sv] }, heart_RV: { col: '#E01E37', a: 0.6 + cy.vS * 0.35, s: [sv, sv, sv] },
+    heart_PT: { col: '#3D7BFF', a: 0.75 }, lung_L: { col: '#FF8FB1', a: 0.32, s: lung }, lung_R: { col: '#FF8FB1', a: 0.32, s: lung },
+    symp_ganglia: { col: '#FF8C00', a: 0.45 + mv.sN * 0.5 },
+    brain_shell: { col: '#F2B5C4', a: 0.16 }, brain_freno: { col: '#00E676', a: 0.35 + mv.pN * 0.6 }, brain_mente: { col: '#B388FF', a: 0.35 + a * 0.6 },
+    brain_acel_amig: { col: '#FF8C00', a: 0.35 + Math.max(mv.sN, a) * 0.6 }, brain_acel_hipo: { col: '#FF8C00', a: 0.35 + mv.sN * 0.6 }, brain_acel_pag: { col: '#FF8C00', a: 0.35 + mv.sN * 0.55 },
+    brain_bulbo: { col: t2Mix('#00C864', '#FF8C00', w), a: 0.45 + Math.max(mv.sN, mv.pN) * 0.5 },
+    vagus: { col: '#00C864', a: Math.min(1, 0.55 + mv.pN * 0.45) }, symp: { col: '#FF8C00', a: Math.min(1, 0.55 + mv.sN * 0.45) }, vessel: { col: '#E63946', vena: '#3A86FF', a: 0.9 },
+  };
+  return {
+    body: { col: '#A9B8E0', a: 0.16 }, legs: { col: mv.zone ? ZONE_HEX[mv.zone] : '#A9B8E0', a: mv.zone ? 0.32 : 0.16 },
+    // Aurículas algo más claras que ventrículos para distinguir cavidades; alfa bajo: con 'lighter' se acumula
+    heart_LA: { col: '#CFE3FF', a: 0.06 + cy.aS * 0.18, s: [sa, sa, sa] }, heart_RA: { col: '#CFE3FF', a: 0.06 + cy.aS * 0.18, s: [sa, sa, sa] },
+    heart_LV: { col: '#EEF2FA', a: 0.07 + cy.vS * 0.2, s: [sv, sv, sv] }, heart_RV: { col: '#EEF2FA', a: 0.07 + cy.vS * 0.2, s: [sv, sv, sv] },
+    heart_PT: { col: '#EEF2FA', a: 0.08 }, lung_L: { col: '#95A1BE', a: 0.14, s: lung }, lung_R: { col: '#95A1BE', a: 0.14, s: lung },
+    symp_ganglia: { col: '#FF8C00', a: 0.15 + mv.sN * 0.6 },
+    brain_shell: { col: '#A9B8E0', a: 0.1 }, brain_freno: { col: '#00C864', a: 0.08 + mv.pN * 0.6 }, brain_mente: { col: '#B388FF', a: 0.08 + a * 0.6 },
+    brain_acel_amig: { col: '#FF8C00', a: 0.08 + Math.max(mv.sN, a) * 0.65 }, brain_acel_hipo: { col: '#FF8C00', a: 0.08 + mv.sN * 0.65 }, brain_acel_pag: { col: '#FF8C00', a: 0.08 + mv.sN * 0.55 },
+    brain_bulbo: { col: t2Mix('#00C864', '#FF8C00', w), a: 0.12 + Math.max(mv.sN, mv.pN) * 0.55 },
+    vagus: { col: '#00C864', a: Math.min(1, 0.2 + mv.pN * 0.8) }, symp: { col: '#FF8C00', a: Math.min(1, 0.2 + mv.sN * 0.8) }, vessel: { col: '#EEF2FA', a: 0.28 },
+  };
+}
+const T2_ORDER = ['body', 'legs', 'lung_L', 'lung_R', 'heart_PT', 'heart_LA', 'heart_RA', 'heart_LV', 'heart_RV', 'symp_ganglia', 'brain_shell', 'brain_freno', 'brain_mente', 'brain_acel_amig', 'brain_acel_hipo', 'brain_acel_pag', 'brain_bulbo'];
+function t2Draw(ctx, w, h, cam, mv, cy, clk, rings) {
+  ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#070B18'; ctx.fillRect(0, 0, w, h);
+  const V = t2View(cam, w, h), Lk = t2Looks(mv, cy, clk), G = T2.G;
+  ctx.globalCompositeOperation = TW.style === 'holo' ? 'lighter' : 'source-over';
+  if (rings) {   // plataforma y disco de zona
+    [[0.3, 0.45], [0.21, 0.3], [0.12, 0.2]].forEach(([r, op]) => { ctx.strokeStyle = 'rgba(0,200,100,' + op + ')'; ctx.lineWidth = 1; ctx.beginPath(); let pen = false;
+      for (let k = 0; k <= 72; k++) { const q = t2Proj(V, Math.cos(k / 72 * 6.2832) * r, 0, Math.sin(k / 72 * 6.2832) * r); if (!q) { pen = false; continue; } pen ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); pen = true; } ctx.stroke(); });
+  }
+  const sz0 = 0.0026 * V.F;
+  T2_ORDER.forEach((g) => {
+    const cl = G[g], lk = Lk[g]; if (!cl || !lk || lk.a <= 0.01) return;
+    ctx.fillStyle = lk.col; ctx.globalAlpha = Math.min(1, lk.a);
+    const P = cl.P, c = cl.c, s = lk.s;
+    for (let i = 0; i < P.length; i += 3) {
+      let x = P[i], y = P[i + 1], z = P[i + 2];
+      if (s) { x = c[0] + (x - c[0]) * s[0]; y = c[1] + (y - c[1]) * s[1]; z = c[2] + (z - c[2]) * s[2]; }
+      const q = t2Proj(V, x, y, z); if (!q || q[0] < -4 || q[1] < -4 || q[0] > w + 4 || q[1] > h + 4) continue;
+      const d = Math.max(0.8, Math.min(4, sz0 / q[2])); ctx.fillRect(q[0] - d / 2, q[1] - d / 2, d, d);
+    }
+  });
+  ctx.globalAlpha = 1;
+  T2.L.forEach((l) => {
+    const lk = Lk[l.g]; if (!lk) return;
+    ctx.strokeStyle = l.vena && lk.vena ? lk.vena : lk.col; ctx.globalAlpha = lk.a; ctx.lineWidth = l.g === 'vessel' ? 3 : 2;
+    if (l.g === 'vagus') { ctx.setLineDash([5, 4]); ctx.lineDashOffset = -clk * 18; } else ctx.setLineDash([]);
+    ctx.beginPath(); let pen = false;
+    l.pts.forEach((p) => { const q = t2Proj(V, p[0], p[1], p[2]); if (!q) { pen = false; return; } pen ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); pen = true; });
+    ctx.stroke();
+  });
+  ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 0.07; ctx.strokeStyle = '#00C864'; ctx.beginPath(); for (let y = 0.5; y < h; y += 4) { ctx.moveTo(0, y); ctx.lineTo(w, y); } ctx.stroke(); ctx.globalAlpha = 1;
+  return V;
+}
+function t2Size(cv) {
+  const pr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth || 1, h = cv.clientHeight || 1;
+  if (cv.width !== Math.round(w * pr) || cv.height !== Math.round(h * pr)) { cv.width = Math.round(w * pr); cv.height = Math.round(h * pr); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(pr, 0, 0, pr, 0, 0); return { ctx, w, h };
+}
+function t2Orbit(cv, cam) {
+  let dr = null;
+  cv.addEventListener('pointerdown', (e) => { dr = { x: e.clientX, y: e.clientY, yaw: cam.yaw, pitch: cam.pitch }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', (e) => { if (!dr) return; cam.yaw = dr.yaw - (e.clientX - dr.x) * 0.008; cam.pitch = clamp(dr.pitch + (e.clientY - dr.y) * 0.006, -1.2, 1.4); });
+  cv.addEventListener('pointerup', () => { dr = null; }); cv.addEventListener('pointercancel', () => { dr = null; });
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); cam.d = clamp(cam.d * (e.deltaY > 0 ? 1.1 : 0.9), cam.d0 * 0.12, cam.d0 * 1.8); }, { passive: false });
+}
+function twinInit2D(why) {
+  if (T2.on) return;
+  T2.on = true; TW.lost = true; TW.mode2d = true; const gen = ++T2.gen;
+  // Un lienzo que tuvo contexto WebGL no admite 2D: se reemplaza por uno nuevo idéntico
+  const old = $('tw-main'), cvM = old.cloneNode(false); old.replaceWith(cvM);
+  const note = $('tw-mode'); note.hidden = false;
+  note.textContent = 'Modo compatibilidad sin GPU (2D) · ' + (why && /Disabled|0xffff/i.test(why) ? 'el navegador tiene la GPU desactivada' : (why || 'WebGL no disponible')) + ' · ver «Por qué 2D» abajo';
+  $('tw-2d-help').hidden = false;
+  twinMsg('Cargando modelo anatómico (modo 2D)…');
+  const camM = t2Cam([0, 0.5, 0], 2.514, Math.atan2(0.55, 2.45), Math.asin(0.12 / 2.514), 28);
+  const camB = t2Cam([0, 0.943, 0.035], 0.35, Math.atan2(0.2, 0.285), Math.asin(0.032 / 0.35), 30);
+  const camS = t2Cam([0, 0.5, 0], 2.7, 0.5, Math.asin(0.1 / 2.7), 26);
+  t2Orbit(cvM, camM); t2Orbit($('tw-brain'), camB);
+  const FOC = { body: [[0, 0.5, 0], 2.5], brain: [[0, 0.943, 0.035], 0.42], heart: [[0.012, 0.75, 0.02], 0.5] };
+  loadTwinModels().then(([body, A]) => { const b = t2Build(body, A); T2.G = b.G; T2.L = b.L; T2.ready = true; twinMsg(''); TW.stripDirty = true; })
+    .catch(() => twinMsg(TWIN_LOAD_ERR));
+  let bt = 0, last = performance.now(), frame = 0, lastFocus = TW.focus, focusT = 0;
+  const loop = (now) => {
+    if (gen !== T2.gen) return;                             // volvió la GPU: este motor 2D se detiene
+    requestAnimationFrame(loop);
+    const dt = Math.min((now - last) / 1000, 0.1); last = now;
+    if ($('sec-twin').hidden || !T2.ready) return;
+    const clk = now / 1000, mv = twinLive();
+    bt += dt; if (bt >= mv.RR) bt %= mv.RR;
+    const cy = twinCycle(bt, mv);
+    TW.ecg.push([clk, cy.ecg]); while (TW.ecg.length && clk - TW.ecg[0][0] > 3) TW.ecg.shift();
+    if (TW.focus !== lastFocus) { lastFocus = TW.focus; focusT = 60; }
+    if (focusT > 0) { const f = FOC[TW.focus] || FOC.body; for (let a = 0; a < 3; a++) camM.t[a] += (f[0][a] - camM.t[a]) * 0.12; camM.d += (f[1] - camM.d) * 0.12; focusT--; }
+    if (TW.spin && !reduceMotion) { camM.yaw += dt * 0.24; camB.yaw += dt * 0.35; }
+    const m = t2Size(cvM), V = t2Draw(m.ctx, m.w, m.h, camM, mv, cy, clk, true);
+    const b = t2Size($('tw-brain')); t2Draw(b.ctx, b.w, b.h, camB, mv, cy, clk, false);
+    if (frame % 6 === 0) {
+      const G = T2.G, ps = [G.heartC, G.brain_mente.c, G.lung_R.c, [0.06, 0.32, 0.03], G.vagA, G.sympA];
+      TW.anch = ps.map((p) => { const q = t2Proj(V, p[0], p[1], p[2]) || [m.w / 2, m.h / 2]; return [q[0] / m.w * 1000, q[1] / m.h * 620]; });
+    }
+    if (TW.stripDirty || frame % 120 === 0) {
+      const s = t2Size($('tw-strip')), pw = s.w / 4, mom = twinMoments();
+      s.ctx.fillStyle = '#070B18'; s.ctx.fillRect(0, 0, s.w, s.h);
+      mom.forEach((q, k) => { s.ctx.save(); s.ctx.translate(k * pw, 0); s.ctx.beginPath(); s.ctx.rect(0, 0, pw, s.h); s.ctx.clip(); t2Draw(s.ctx, pw, s.h, camS, q.mv, { aS: 0, vS: 0.4 }, clk, true); s.ctx.restore(); });
+      twinStripCaptions(mom); TW.stripDirty = false;
+    }
+    if (frame % 4 === 0) twinHud(mv);
+    frame++;
+  };
+  requestAnimationFrame(loop);
+}
+function twinNoGlText(why) {
+  // «GL_VENDOR = Disabled»: el navegador apagó su GPU (fallos repetidos del proceso de GPU o lista de bloqueo).
+  // Ningún sitio obtiene WebGL así; la solución es del navegador, no de la página.
+  if (/GL_VENDOR\s*=\s*Disabled|0xffff/i.test(why || '')) return 'El navegador tiene la GPU desactivada (GL_VENDOR = Disabled): ninguna página puede usar WebGL así.\n' +
+    '1) Cierra TODOS los procesos de Chrome (Administrador de tareas) y vuelve a abrir; revisa chrome://gpu → WebGL: Hardware accelerated.\n' +
+    '2) Si sigue igual: Windows → Pantalla → Gráficos → Chrome → «Alto rendimiento» (GPU NVIDIA), y chrome://flags/#ignore-gpu-blocklist → Enabled.\n' +
+    '3) Para verlo ya (WebGL por software): con Chrome cerrado, ejecuta chrome.exe --enable-unsafe-swiftshader con esta dirección, o abre la página en Edge.';
+  return 'El navegador no entregó WebGL' + (why ? ' (' + why + ')' : '') + '.\n' +
+    '1) Cierra y vuelve a abrir el navegador: tras varias recargas Chrome bloquea WebGL en el sitio.\n' +
+    '2) Abre la página en Chrome o Edge, no en la vista previa de VS Code.\n' +
+    '3) Activa «Usar aceleración gráfica» en chrome://settings/system y revisa chrome://gpu (WebGL: Hardware accelerated).';
+}
+// Cuatro momentos del registro: inicio, α1 < 0.75, α1 < 0.50, final
+function twinMoments() {
+  const s = S.samples, p = getPatient(), anx = (safeN($('m-som').value, 4) + safeN($('m-cog').value, 4)) / 2;
+  const mvOf = (x) => { const hr = x && x.fc ? x.fc : TWIN_IDLE_HR; return { hr, pN: x && x.pns != null ? x.pns / 100 : 0.5, sN: x && x.sns != null ? x.sns / 100 : 0.5, fr: x?.fr || 12, a1: x?.a1 ?? null, anx, zone: twinZone(x?.fc ?? null, x?.a1 ?? null, p), RR: 60 / hr, QT: 0.4 }; };
+  const first = (fn) => s.find(fn) || null;
+  // Los cruces de α1 solo cuentan en esfuerzo (≥ 30 % de la reserva de FC): en reposo α1 bajo no es un umbral
+  const effort = (x) => x.fc != null && (x.fc - p.hrRest) / Math.max(1, p.hrMax - p.hrRest) >= 0.3;
+  const withFc = s.filter((x) => x.fc != null);
+  const pick = [
+    ['Inicio', withFc[0] || null], ['≈ Umbral 1 (α1 0.75)', first((x) => x.a1 != null && x.a1 < 0.75 && effort(x))],
+    ['≈ Umbral 2 (α1 0.50)', first((x) => x.a1 != null && x.a1 < 0.5 && effort(x))], ['Final', withFc.length ? withFc[withFc.length - 1] : null],
+  ];
+  return pick.map(([name, x]) => ({ name, x, mv: mvOf(x) }));
+}
+function twinStripCaptions(mom) {
+  $('tw-strip-cap').innerHTML = mom.map((q) => '<div style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">' + esc(q.name) + '</span><span class="mono" style="color:var(--soft)">' +
+    (q.x ? mmss(q.x.t) + ' · ' + fmt(q.x.fc, 0) + ' lpm · α1 ' + fmt(q.x.a1, 2) : 'sin dato en el registro') + '</span></div>').join('');
+}
+const ZONE_TXT = ['Reposo', '≈ Zona 1', '≈ Zona 2', '≈ Zona 3'], ZONE_CSS = ['#6B7699', '#5A6A9A', '#9AA8D6', '#E4E9FA'];
+function twinHud(mv) {
+  $('tw-anx').textContent = mv.anx.toFixed(1);
+  $('tw-p').textContent = mv.valid ? Math.round(mv.pN * 100) + ' %' : '--';
+  $('tw-s').textContent = mv.valid ? Math.round(mv.sN * 100) + ' %' : '--';
+  $('tw-hr').textContent = mv.hasHr ? Math.round(mv.hr) : '--';
+  $('tw-a1').textContent = fmt(mv.a1, 2);
+  $('tw-fr').textContent = mv.fr != null ? Math.round(mv.fr) : '--';
+  $('tw-zone').textContent = mv.hasHr ? ZONE_TXT[mv.zone] : '--'; $('tw-zone').setAttribute('fill', ZONE_CSS[mv.zone]);
+  const ph = !mv.hasHr ? 'Sin datos de FC' : S.rec ? 'Registro en curso' : 'En vivo';
+  $('tw-phase').textContent = ph;
+  $('tw-clock').textContent = S.rec ? 'min ' + mmss((Date.now() - S.t0) / 1000) : (S.src === 'demo' ? 'demostración · datos de ejemplo' : $('txt-src').textContent);
+  $('tw-brain-ph').textContent = ph;
+  // ECG ilustrativo (3 s)
+  const b = TW.ecg; if (b.length > 1) { const now = b[b.length - 1][0]; $('tw-ecg').setAttribute('d', b.map((e, k) => (k ? 'L' : 'M') + ((1 - (now - e[0]) / 3) * 222).toFixed(1) + ' ' + (30 * 0.62 - e[1] * 30 * 0.5).toFixed(1)).join(' ')); }
+  // líneas guía de los paneles a los órganos
+  const AN = TW.anch || [[520, 250], [500, 110], [530, 245], [520, 420], [505, 175], [500, 200]];
+  const AP = (j) => AN[j][0].toFixed(1) + ' ' + AN[j][1].toFixed(1);
+  $('tw-leaders').setAttribute('d', 'M270 92 L' + AP(1) + ' M270 232 L' + AP(4) + ' M270 372 L' + AP(5) + ' M730 175 L' + AP(0) + ' M730 315 L' + AP(2) + ' M730 442 L' + AP(3));
+  $('tw-dots').setAttribute('d', [1, 4, 5, 0, 2, 3].map((j) => 'M' + (AN[j][0] - 2.5).toFixed(1) + ' ' + AN[j][1].toFixed(1) + ' a2.5 2.5 0 1 0 5 0 a2.5 2.5 0 1 0 -5 0').join(' '));
+  // panel del cerebro
+  const fre = mv.valid ? Math.round(mv.pN * 100) : null, ace = mv.valid ? Math.round(mv.sN * 100) : null, men = Math.round(mv.anx * 10);
+  $('tw-b-freno').style.width = (fre ?? 0) + '%'; $('tw-b-freno-v').textContent = fre != null ? fre + ' %' : '--';
+  $('tw-b-acel').style.width = (ace ?? 0) + '%'; $('tw-b-acel-v').textContent = ace != null ? ace + ' %' : '--';
+  $('tw-b-mente').style.width = men + '%'; $('tw-b-mente-v').textContent = men + ' %';
+  const w = mv.sN / (mv.sN + mv.pN + 1e-6);
+  $('tw-b-bulbo-dot').style.background = !mv.valid ? COL.muted : w > 0.55 ? COL.sns : w < 0.45 ? COL.pns : '#A8B0BA';
+  $('tw-b-bulbo-v').textContent = !mv.valid ? '--' : w > 0.55 ? 'acel.' : w < 0.45 ? 'freno' : 'mixto';
+}
+
+// ══ Informe ══
+function sessionSummary() {
+  const s = S.samples, v = (k) => s.map((x) => x[k]).filter((x) => x != null && isFinite(x));
+  const st = (a) => a.length ? { mean: a.reduce((x, y) => x + y, 0) / a.length, min: Math.min(...a), max: Math.max(...a) } : null;
+  const rr = S.allRR, nArt = rr.filter((x) => x.flag === 1).length, nSyn = rr.filter((x) => x.flag === 2).length, nOk = rr.length - nArt - nSyn;
+  const tr = []; for (let i = 0; i + 1 < rr.length; i++) if (rr[i].flag === 0 && rr[i + 1].flag === 0) tr.push([rr[i].rr, rr[i + 1].rr]);
+  return { dur: s.length ? s[s.length - 1].t : 0, n: s.length, validPct: s.length ? 100 * s.filter((x) => x.valid).length / s.length : 0,
+    fc: st(v('fc')), rmssd: st(v('rmssd')), sns: st(v('sns')), pns: st(v('pns')), a1: st(v('a1')),
+    rrN: rr.length, nOk, nArt, nSyn, artPct: nOk + nArt ? 100 * nArt / (nOk + nArt) : 0, sd: poincareSD(tr) };
+}
+function esc(t) { return String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function snap(id) { try { return $(id).toDataURL('image/png'); } catch (_) { return ''; } }
+function buildReport() {
+  const p = getPatient(), r = sessionSummary(), { today, base } = radarScores();
+  const row = (k, st, d, u) => '<tr><td>' + k + '</td><td>' + (st ? fmt(st.mean, d) : '--') + '</td><td>' + (st ? fmt(st.min, d) : '--') + '</td><td>' + (st ? fmt(st.max, d) : '--') + '</td><td>' + u + '</td></tr>';
+  const demo = S.src === 'demo' || (!S.device && r.n > 0 && S.demoTimer);
+  const html =
+    '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><h2>Informe de variabilidad cardiaca y sistema nervioso autónomo</h2><div class="small">Psico-HRV-Holo · ' + esc(new Date().toLocaleString('es-CL')) + (demo ? ' · <strong>Datos de ejemplo</strong>' : '') + '</div></div></div>' +
+    '<h3>Evaluado</h3><table><tbody>' +
+    '<tr><th>Nombre</th><td>' + esc(p.name || '--') + '</td><th>Edad</th><td>' + (p.age || '--') + '</td><th>Sexo</th><td>' + esc(p.sex) + '</td></tr>' +
+    '<tr><th>Peso</th><td>' + (p.weight ? p.weight + ' kg' : '--') + '</td><th>Talla</th><td>' + (p.height ? p.height + ' cm' : '--') + '</td><th>Actividad</th><td>' + esc(p.activity) + '</td></tr>' +
+    '<tr><th>Deporte</th><td>' + esc(p.sport || '--') + '</td><th>FC reposo / máx.</th><td>' + p.hrRest + ' / ' + p.hrMax + ' lpm</td><th>Evaluador</th><td>' + esc(p.evaluator || '--') + '</td></tr>' +
+    '<tr><th>Institución</th><td colspan="5">' + esc(p.institution || '--') + '</td></tr></tbody></table>' +
+    '<h3>Sesión</h3><table><tbody><tr><th>Duración</th><td>' + mmss(r.dur) + '</td><th>Muestras (1/s)</th><td>' + r.n + '</td><th>Ventanas publicables</th><td>' + fmt(r.validPct, 0) + ' %</td></tr>' +
+    '<tr><th>RR registrados</th><td>' + r.rrN + '</td><th>Artefactos</th><td>' + r.nArt + ' (' + fmt(r.artPct, 1) + ' %)</td><th>RR sintéticos</th><td>' + r.nSyn + '</td></tr>' +
+    '<tr><th>Fuente</th><td colspan="5">' + esc($('txt-src').textContent) + '</td></tr></tbody></table>' +
+    '<h3>Resultados (ventanas de 120 s con calidad ≤ 5 %)</h3><table><thead><tr><th>Variable</th><th>Media</th><th>Mín.</th><th>Máx.</th><th>Unidad</th></tr></thead><tbody>' +
+    row('FC', r.fc, 0, 'lpm') + row('RMSSD', r.rmssd, 1, 'ms') + row('Índice simpático', r.sns, 0, '%') + row('Índice parasimpático', r.pns, 0, '%') + row('DFA α1', r.a1, 2, '—') +
+    '<tr><td>Poincaré SD1 / SD2</td><td colspan="3">' + (r.sd ? fmt(r.sd.sd1, 1) + ' / ' + fmt(r.sd.sd2, 1) : '--') + '</td><td>ms</td></tr></tbody></table>' +
+    '<h3>Radar cuerpo–mente</h3><table><thead><tr><th>Eje</th><th>Hoy (0–100)</th><th>Basal</th></tr></thead><tbody>' +
+    RADAR_AXES.map((a) => '<tr><td>' + a.t + '</td><td>' + (today[a.k] == null ? '--' : Math.round(today[a.k] * 100)) + '</td><td>' + Math.round(base[a.k] * 100) + '</td></tr>').join('') + '</tbody></table>' +
+    '<div class="imgs">' + (snaChart ? '<figure style="margin:0;grid-column:1/-1"><img alt="Sistema nervioso autónomo y HRV, último minuto" src="' + snap('sna-chart') + '"><figcaption class="small">Sistema nervioso autónomo y HRV · último minuto</figcaption></figure>' : '') +
+    '<figure style="margin:0"><img alt="Holograma de Poincaré 3D" src="' + snap('cv-pc') + '"><figcaption class="small">Poincaré 3D</figcaption></figure>' +
+    '<figure style="margin:0"><img alt="Radar cuerpo–mente" src="' + snap('cv-radar') + '"><figcaption class="small">Radar cuerpo–mente</figcaption></figure>' +
+    '<figure style="margin:0;grid-column:1/-1"><img alt="Paisaje autonómico 3D" src="' + snap('cv-land') + '"><figcaption class="small">Paisaje autonómico 3D de la sesión</figcaption></figure>' +
+    ((TW.mainR || TW.mode2d) ? '<figure style="margin:0"><img alt="Gemelo fisiológico holográfico" src="' + snap('tw-main') + '"><figcaption class="small">Gemelo fisiológico (último cuadro visto)</figcaption></figure>' +
+      '<figure style="margin:0"><img alt="Cerebro, red autonómica central" src="' + snap('tw-brain') + '"><figcaption class="small">Red autonómica central (modelo conceptual)</figcaption></figure>' +
+      '<figure style="margin:0;grid-column:1/-1"><img alt="Cuatro momentos de la sesión" src="' + snap('tw-strip') + '"><figcaption class="small">Cuatro momentos: inicio, ≈ umbral 1, ≈ umbral 2, final</figcaption></figure>' : '') +
+    '</div>' +
+    '<h3>Notas</h3><p>' + esc(p.notes || 'Sin notas') + '</p>' +
+    '<p class="small">Interpretación: los índices simpático y parasimpático se calculan con la fórmula de la pestaña HRV &amp; SNA (escala relativa que suma 100 %); no son índices normativos. Las vistas 3D sirven para resumir y enseñar; los valores se leen en las tablas. El gemelo fisiológico es un modelo conceptual: el ECG es ilustrativo, la FR se estima desde la HRV y la iluminación cerebral se infiere de la HRV y del autoinforme (no es una medición del cerebro). Modelos 3D: MakeHuman (CC0), Z-Anatomy derivado de BodyParts3D © DBCLS (CC BY-SA 4.0), SPL/NAC Brain Atlas (Open Anatomy). La HRV se calcula solo con intervalos RR reales y válidos (corrección de artefactos con umbral relativo de 20 %; ventanas con más de 5 % de artefactos no se publican). Este informe no es un diagnóstico médico.</p>';
+  $('report-doc').innerHTML = html;
+  return html;
+}
+function download(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+function fileStem() { const p = getPatient(); return 'hrv_' + (p.name || 'sesion').replace(/[^A-Za-z0-9_-]+/g, '_') + '_' + new Date().toISOString().slice(0, 10); }
+function exportHtml() {
+  const body = buildReport();
+  const doc = '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe HRV</title><style>body{font-family:Arial,sans-serif;color:#0B1022;max-width:960px;margin:24px auto;padding:0 16px}table{border-collapse:collapse;width:100%;font-size:13.5px}td,th{border-bottom:1px solid #D3D9E8;padding:6px 8px;text-align:left}th{color:#4D5878}.imgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}img{width:100%;border-radius:8px;background:#070B18}.small{font-size:12px;color:#4D5878}</style></head><body>' + body + '</' + 'body></' + 'html>';
+  download(fileStem() + '.html', doc, 'text/html');
+}
+function exportCsv() {
+  if (!S.samples.length) { toast('No hay sesión registrada'); return; }
+  const head = 't_s,fc_lpm,sns_pct,pns_pct,rmssd_ms,dfa_a1,artefactos_pct,ventana_valida,fr_estimada_hrv';
+  const lines = S.samples.map((x) => [x.t.toFixed(0), fmt(x.fc, 0), x.sns ?? '', x.pns ?? '', x.rmssd != null ? x.rmssd.toFixed(1) : '', x.a1 != null ? x.a1.toFixed(3) : '', x.artPct != null ? x.artPct.toFixed(1) : '', x.valid ? 1 : 0, x.fr != null ? x.fr.toFixed(1) : ''].join(','));
+  download(fileStem() + '.csv', [head, ...lines].join('\n'), 'text/csv');
+}
+function exportRR() {
+  if (!S.allRR.length) { toast('No hay RR registrados'); return; }
+  // Un RR por línea (formato aceptado por Kubios); los sintéticos no se exportan y los artefactos se marcan aparte
+  const txt = S.allRR.filter((x) => x.flag !== RR_FLAG.SYNTH).map((x) => Math.round(x.rr)).join('\n');
+  const flags = 't_s,rr_ms,flag\n' + S.allRR.map((x) => x.t.toFixed(2) + ',' + Math.round(x.rr) + ',' + ['ok', 'artefacto', 'sintetico'][x.flag]).join('\n');
+  download(fileStem() + '_rr.txt', txt, 'text/plain'); setTimeout(() => download(fileStem() + '_rr_calidad.csv', flags, 'text/csv'), 400);
+}
+
+// ══ Navegación y eventos ══
+function showTab(id) {
+  ['mon', 'twin', 'user', 'report'].forEach((k) => { const on = k === id; $('tab-' + k).setAttribute('aria-selected', on); $('sec-' + k).hidden = !on; $('sec-' + k).style.display = on ? 'flex' : ''; });
+  if (id === 'twin') twinInit();
+  if (id === 'mon' && snaChart) snaChart.update('none');
+  if (id === 'report') buildReport();
+  S.dirty = true;
+}
+function init() {
+  loadUser();
+  ['mon', 'twin', 'user', 'report'].forEach((k) => $('tab-' + k).addEventListener('click', () => showTab(k)));
+  document.querySelectorAll('.tw-focus').forEach((b) => b.addEventListener('click', () => {
+    TW.focus = b.dataset.focus; document.querySelectorAll('.tw-focus').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
+  $('tw-spin').addEventListener('click', () => { TW.spin = !TW.spin; $('tw-spin').textContent = TW.spin ? 'Detener giro' : 'Girar'; });
+  $('tw-retry').addEventListener('click', () => twinRetryGpu(true));
+  const syncStyleBtns = () => document.querySelectorAll('.tw-style').forEach((x) => x.setAttribute('aria-pressed', x.dataset.style === TW.style));
+  document.querySelectorAll('.tw-style').forEach((b) => b.addEventListener('click', () => {
+    TW.style = b.dataset.style; store.set('twinStyle', TW.style); TW.setStyle(TW.style); TW.stripDirty = true; syncStyleBtns(); }));
+  syncStyleBtns();
+  if (!TW.spin) $('tw-spin').textContent = 'Girar';
+  USER_IDS.forEach((id) => $(id)?.addEventListener('input', () => { syncSliders(); saveUser(); }));
+  $('btn-connect').addEventListener('click', () => S.device ? disconnectHR() : connectHR());
+  $('btn-demo').addEventListener('click', () => S.demoTimer ? stopDemo() : startDemo());
+  $('btn-rec').addEventListener('click', toggleRec);
+  $('btn-spin').addEventListener('click', () => { pcSpin = !pcSpin; $('btn-spin').textContent = pcSpin ? 'Detener giro' : 'Girar'; });
+  $('btn-pc-reset').addEventListener('click', () => { pcView.yaw = pcView.yaw0; pcView.pitch = pcView.pitch0; });
+  $('btn-land-reset').addEventListener('click', () => { landView.yaw = landView.yaw0; landView.pitch = landView.pitch0; S.dirty = true; });
+  $('btn-radar').addEventListener('click', () => { radarFlat = !radarFlat; $('btn-radar').textContent = radarFlat ? 'Vista holográfica' : 'Vista plana'; });
+  $('btn-base').addEventListener('click', () => { saveBaseline(); store.set('mindBase', { conf: safeN($('m-conf').value) / 10, som: 1 - safeN($('m-som').value) / 10, cog: 1 - safeN($('m-cog').value) / 10 }); });
+  $('btn-base-clear').addEventListener('click', () => { ['b-rmssd', 'b-hr', 'b-a1', 'b-date'].forEach((id) => { $(id).value = ''; }); store.set('mindBase', { conf: 0.7, som: 0.7, cog: 0.7 }); saveUser(); syncSliders(); });
+  $('btn-rep-build').addEventListener('click', buildReport);
+  $('btn-rep-print').addEventListener('click', () => { buildReport(); window.print(); });
+  $('btn-rep-html').addEventListener('click', exportHtml);
+  $('btn-rep-csv').addEventListener('click', exportCsv);
+  $('btn-rep-rr').addEventListener('click', exportRR);
+  attachDrag($('cv-pc'), pcView); attachDrag($('cv-radar'), radarView); attachDrag($('cv-land'), landView);
+  initSnaChart();
+  if (!pcSpin) $('btn-spin').textContent = 'Girar';
+  window.addEventListener('resize', () => { S.dirty = true; });
+  requestAnimationFrame(frame);
+}
+init();
+</script>
+</body>
+</html>

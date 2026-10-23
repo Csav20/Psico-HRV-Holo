@@ -1,0 +1,11 @@
+Copyright (c) 2026 Claudio Abarca Vargas. Todos los derechos reservados.
+
+El código fuente, el diseño y los textos de Psico-HRV-Holo son propiedad de su autor. Se permite usar la
+aplicación publicada en https://csav20.github.io/Psico-HRV-Holo/ y enlazarla. No se permite copiar,
+modificar, redistribuir ni usar comercialmente el código o el diseño sin autorización escrita del autor.
+
+Contacto: claudio.abarca@ind.cl
+
+Componentes de terceros incluidos en docs/holo/ y cargados por la aplicación mantienen sus propias
+licencias (CC0 1.0, CC BY-SA 4.0, licencia 3D Slicer, MIT, SIL OFL 1.1). Ver CREDITS.md.
+En particular, docs/holo/anatomy_twin.json se distribuye bajo CC BY-SA 4.0.
